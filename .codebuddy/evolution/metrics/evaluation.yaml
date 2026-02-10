@@ -1,0 +1,187 @@
+# 效果评估配置
+# 定义 Agent 效果评估的指标和方法
+
+# ============================================
+# 评估维度
+# ============================================
+
+dimensions:
+  # 任务完成质量
+  task_quality:
+    name: "任务完成质量"
+    description: "评估 Agent 完成任务的质量"
+    metrics:
+      - name: "completion_rate"
+        description: "任务完成率"
+        formula: "completed_tasks / total_tasks"
+        target: ">= 95%"
+        
+      - name: "first_time_success_rate"
+        description: "一次成功率"
+        formula: "tasks_without_iteration / total_tasks"
+        target: ">= 70%"
+        
+      - name: "iteration_count"
+        description: "平均迭代次数"
+        formula: "total_iterations / total_tasks"
+        target: "<= 2"
+
+  # 输出质量
+  output_quality:
+    name: "输出质量"
+    description: "评估 Agent 输出的质量"
+    metrics:
+      - name: "code_review_pass_rate"
+        description: "代码审查通过率"
+        formula: "passed_reviews / total_reviews"
+        target: ">= 90%"
+        
+      - name: "test_coverage"
+        description: "测试覆盖率"
+        formula: "covered_lines / total_lines"
+        target: ">= 80%"
+        
+      - name: "security_issues"
+        description: "安全问题数"
+        formula: "count(security_issues)"
+        target: "= 0"
+
+  # 效率指标
+  efficiency:
+    name: "执行效率"
+    description: "评估 Agent 的执行效率"
+    metrics:
+      - name: "token_usage"
+        description: "Token 消耗"
+        formula: "total_tokens / task"
+        target: "minimize"
+        
+      - name: "execution_time"
+        description: "执行时间"
+        formula: "total_time / task"
+        target: "<= 5min"
+        
+      - name: "cost"
+        description: "成本"
+        formula: "total_cost / task"
+        target: "minimize"
+
+  # 用户满意度
+  user_satisfaction:
+    name: "用户满意度"
+    description: "评估用户对 Agent 的满意度"
+    metrics:
+      - name: "rating"
+        description: "用户评分"
+        formula: "average(user_ratings)"
+        target: ">= 4.0"
+        
+      - name: "acceptance_rate"
+        description: "输出接受率"
+        formula: "accepted_outputs / total_outputs"
+        target: ">= 90%"
+
+# ============================================
+# Agent 评估配置
+# ============================================
+
+agents:
+  orchestrator:
+    focus_dimensions:
+      - task_quality
+      - efficiency
+    key_metrics:
+      - completion_rate
+      - iteration_count
+      - token_usage
+
+  architect:
+    focus_dimensions:
+      - output_quality
+      - user_satisfaction
+    key_metrics:
+      - acceptance_rate
+      - rating
+
+  developer:
+    focus_dimensions:
+      - output_quality
+      - efficiency
+    key_metrics:
+      - code_review_pass_rate
+      - test_coverage
+      - security_issues
+
+  researcher:
+    focus_dimensions:
+      - task_quality
+      - efficiency
+    key_metrics:
+      - completion_rate
+      - execution_time
+      - token_usage
+
+  qa:
+    focus_dimensions:
+      - output_quality
+      - task_quality
+    key_metrics:
+      - first_time_success_rate
+      - security_issues
+
+# ============================================
+# 评估流程
+# ============================================
+
+evaluation_process:
+  # 数据收集
+  data_collection:
+    enabled: true
+    storage: "evolution/metrics/raw/"
+    retention_days: 90
+    
+  # 定期报告
+  reporting:
+    frequency: "weekly"
+    output: "evolution/metrics/reports/"
+    
+  # 告警阈值
+  alerts:
+    enabled: true
+    conditions:
+      - metric: "completion_rate"
+        operator: "<"
+        threshold: 80
+        severity: "high"
+        
+      - metric: "security_issues"
+        operator: ">"
+        threshold: 0
+        severity: "critical"
+
+# ============================================
+# 反馈闭环
+# ============================================
+
+feedback_loop:
+  # 触发条件
+  triggers:
+    - condition: "weekly_report"
+      action: "review_metrics"
+      
+    - condition: "alert_triggered"
+      action: "immediate_review"
+      
+    - condition: "experiment_completed"
+      action: "update_version"
+  
+  # 优化流程
+  optimization:
+    steps:
+      1: "分析指标数据"
+      2: "识别问题 Prompt"
+      3: "制定优化方案"
+      4: "创建新版本"
+      5: "配置 A/B 测试"
+      6: "验证效果"
+      7: "发布新版本"

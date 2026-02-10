@@ -1,0 +1,168 @@
+# AI 团队配置
+# 定义团队角色、职责和协作关系
+
+# ============================================
+# 团队基本信息
+# ============================================
+
+team:
+  name: "AI Development Team"
+  version: "1.0.0"
+  description: "专业的 AI 开发团队，支持软件开发全流程"
+
+# ============================================
+# 角色定义
+# ============================================
+
+roles:
+  orchestrator:
+    name: "Orchestrator"
+    display_name: "编排师"
+    description: "项目协调者，负责任务拆解、委派和验证"
+    model: "claude-opus"
+    cost_tier: "high"
+    capabilities:
+      - "需求理解"
+      - "任务拆解"
+      - "任务委派"
+      - "结果验证"
+    prompt_file: ".codebuddy/agents/orchestrator.md"
+    version: "v1.0.0"
+
+  architect:
+    name: "Architect"
+    display_name: "架构师"
+    description: "技术决策者，负责架构设计和技术选型"
+    model: "claude-opus"
+    cost_tier: "high"
+    capabilities:
+      - "架构设计"
+      - "技术选型"
+      - "方案评审"
+      - "代码审查"
+    prompt_file: ".codebuddy/agents/architect.md"
+    version: "v1.0.0"
+
+  developer:
+    name: "Developer"
+    display_name: "开发者"
+    description: "执行主力，负责编码实现和测试编写"
+    model: "claude-sonnet"
+    cost_tier: "medium"
+    capabilities:
+      - "编码实现"
+      - "Bug 修复"
+      - "测试编写"
+      - "代码优化"
+    prompt_file: ".codebuddy/agents/developer.md"
+    version: "v1.0.0"
+
+  researcher:
+    name: "Researcher"
+    display_name: "研究员"
+    description: "知识支撑，负责代码扫描和信息检索"
+    model: "claude-haiku"
+    cost_tier: "low"
+    capabilities:
+      - "代码扫描"
+      - "文档检索"
+      - "信息收集"
+      - "知识整理"
+    prompt_file: ".codebuddy/agents/researcher.md"
+    version: "v1.0.0"
+
+  qa:
+    name: "QA"
+    display_name: "质量工程师"
+    description: "质量守门人，负责测试验证和代码审查"
+    model: "claude-sonnet"
+    cost_tier: "medium"
+    capabilities:
+      - "代码审查"
+      - "测试验证"
+      - "安全检查"
+      - "部署检查"
+    prompt_file: ".codebuddy/agents/qa.md"
+    version: "v1.0.0"
+
+# ============================================
+# 协作关系
+# ============================================
+
+collaboration:
+  # Orchestrator 可以委派任务给其他所有角色
+  orchestrator:
+    can_delegate_to:
+      - architect
+      - developer
+      - researcher
+      - qa
+    receives_from: []
+
+  # Architect 接收 Orchestrator 委派，可请求 Researcher 支持
+  architect:
+    can_delegate_to:
+      - researcher
+    receives_from:
+      - orchestrator
+
+  # Developer 接收 Orchestrator 委派，可请求 Researcher 支持
+  developer:
+    can_delegate_to:
+      - researcher
+    receives_from:
+      - orchestrator
+
+  # Researcher 为其他角色提供支持
+  researcher:
+    can_delegate_to: []
+    receives_from:
+      - orchestrator
+      - architect
+      - developer
+      - qa
+
+  # QA 接收 Orchestrator 委派
+  qa:
+    can_delegate_to:
+      - researcher
+    receives_from:
+      - orchestrator
+
+# ============================================
+# 工作流配置
+# ============================================
+
+workflows:
+  default: "feature-dev"
+  available:
+    - name: "feature-dev"
+      file: "workflows/feature-dev.yaml"
+      description: "功能开发流程"
+    - name: "bug-fix"
+      file: "workflows/bug-fix.yaml"
+      description: "Bug 修复流程"
+    - name: "code-review"
+      file: "workflows/code-review.yaml"
+      description: "代码审查流程"
+
+# ============================================
+# 质量门禁
+# ============================================
+
+quality_gates:
+  requirement_analysis:
+    min_score: 7
+    required: true
+    
+  code_review:
+    required: true
+    auto_fix: true
+    
+  test_coverage:
+    min_percentage: 80
+    required: true
+    
+  security_check:
+    required: true
+    zero_tolerance: true

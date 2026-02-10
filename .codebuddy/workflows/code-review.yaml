@@ -1,0 +1,197 @@
+# 代码审查工作流
+# 全面的代码质量审查流程
+
+name: "code-review"
+description: "代码审查流程 - 多维度代码质量检查"
+version: "1.0.0"
+
+# ============================================
+# 工作流阶段
+# ============================================
+
+stages:
+  # 阶段 1: 准备审查
+  - name: "review_preparation"
+    display_name: "审查准备"
+    description: "收集审查所需的上下文信息"
+    
+    executor:
+      primary: "researcher"
+    
+    inputs:
+      - name: "review_scope"
+        type: "string"
+        required: true
+        description: "审查范围（文件/目录）"
+    
+    outputs:
+      - name: "code_context"
+        type: "document"
+        description: "代码上下文"
+      - name: "related_specs"
+        type: "document"
+        description: "相关规范"
+    
+    quality_gate:
+      type: "automated"
+      checks:
+        - name: "context_collected"
+          required: true
+
+  # 阶段 2: 代码审查
+  - name: "code_review"
+    display_name: "代码审查"
+    description: "执行多维度代码审查"
+    
+    executor:
+      primary: "qa"
+      support: ["researcher"]
+    
+    inputs:
+      - name: "review_scope"
+        type: "string"
+        from_stage: "review_preparation"
+      - name: "code_context"
+        type: "document"
+        from_stage: "review_preparation"
+    
+    outputs:
+      - name: "review_report"
+        type: "document"
+        description: "审查报告"
+      - name: "issues_list"
+        type: "list"
+        description: "问题清单"
+    
+    # 审查维度
+    review_dimensions:
+      - name: "functionality"
+        display_name: "功能性"
+        weight: 25
+        checks:
+          - "代码逻辑正确"
+          - "边界条件处理"
+          - "错误处理完善"
+      
+      - name: "security"
+        display_name: "安全性"
+        weight: 30
+        checks:
+          - "SQL 注入防护"
+          - "XSS 防护"
+          - "敏感信息保护"
+          - "权限校验"
+      
+      - name: "performance"
+        display_name: "性能"
+        weight: 20
+        checks:
+          - "N+1 查询"
+          - "资源泄露"
+          - "不必要的计算"
+      
+      - name: "maintainability"
+        display_name: "可维护性"
+        weight: 15
+        checks:
+          - "代码可读性"
+          - "命名规范"
+          - "注释完整性"
+      
+      - name: "testing"
+        display_name: "测试"
+        weight: 10
+        checks:
+          - "测试覆盖率"
+          - "测试用例质量"
+    
+    quality_gate:
+      type: "score"
+      min_score: 70
+      blocking_issues: ["security"]
+
+  # 阶段 3: 问题修复
+  - name: "issue_fixing"
+    display_name: "问题修复"
+    description: "自动/手动修复发现的问题"
+    
+    executor:
+      primary: "qa"
+      support: ["developer"]
+    
+    inputs:
+      - name: "issues_list"
+        type: "list"
+        from_stage: "code_review"
+    
+    outputs:
+      - name: "fixed_issues"
+        type: "list"
+        description: "已修复问题"
+      - name: "pending_issues"
+        type: "list"
+        description: "待人工处理问题"
+    
+    # 自动修复配置
+    auto_fix:
+      enabled: true
+      types:
+        - "format"
+        - "import_order"
+        - "simple_logic"
+        - "missing_null_check"
+      
+      # 不自动修复的类型
+      exclude:
+        - "architecture"
+        - "complex_logic"
+        - "security_critical"
+
+  # 阶段 4: 审查总结
+  - name: "review_summary"
+    display_name: "审查总结"
+    description: "生成最终审查报告"
+    
+    executor:
+      primary: "orchestrator"
+    
+    inputs:
+      - name: "review_report"
+        type: "document"
+        from_stage: "code_review"
+      - name: "fixed_issues"
+        type: "list"
+        from_stage: "issue_fixing"
+      - name: "pending_issues"
+        type: "list"
+        from_stage: "issue_fixing"
+    
+    outputs:
+      - name: "final_report"
+        type: "document"
+        description: "最终审查报告"
+      - name: "decision"
+        type: "string"
+        description: "审查结论"
+    
+    # 决策规则
+    decision_rules:
+      - condition: "pending_issues.security > 0"
+        decision: "reject"
+        message: "存在安全问题，需修复后重新审查"
+      
+      - condition: "pending_issues.count > 5"
+        decision: "request_changes"
+        message: "问题较多，请修复后重新提交"
+      
+      - condition: "score >= 70 and pending_issues.security == 0"
+        decision: "approve"
+        message: "审查通过"
+
+# ============================================
+# 超时配置
+# ============================================
+
+timeouts:
+  stage_default: "15m"
+  workflow_total: "1h"

@@ -1,0 +1,28 @@
+---
+description: 
+alwaysApply: true
+enabled: true
+updatedAt: 2026-02-10T11:22:38.909Z
+provider: 
+---
+
+# Entertainment 项目上下文
+
+## 项目背景
+这是一个娱乐工具集项目，用于桌游、台球、日常娱乐活动中的代码/界面优化。
+
+## 技术栈
+- 前端工程师（6年经验），有代码基础
+- GitHub 仓库：https://github.com/08163356/entertainment.git
+- 部署方式：Nginx + 服务器
+- 访问地址：https://ablog.axingit.top/entertainment
+
+## 协作规则
+1. **需求明确时**：直接执行，不需要额外确认
+2. **需求模糊时**：主动提问澄清
+3. **执行过程中**：遇到需要确认的关键决策点，及时提问
+
+## 项目约定
+- 所有功能模块放在 `/entertainment` 路径下
+- 代码需要可部署、可访问
+- 界面美观实用

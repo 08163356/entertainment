@@ -1,0 +1,123 @@
+# A/B 测试配置
+# 用于对比不同版本 Prompt 的效果
+
+# ============================================
+# 实验配置
+# ============================================
+
+experiments:
+  # 实验 1: Orchestrator 任务拆解优化
+  - name: "orchestrator-task-decomposition-v1.1"
+    status: "draft"  # draft | running | completed | cancelled
+    description: "测试新版任务拆解策略是否提高完成质量"
+    
+    # 实验目标
+    hypothesis: "更细粒度的任务拆解可以提高任务完成率"
+    
+    # 变体配置
+    variants:
+      - name: "control"
+        description: "当前生产版本"
+        agent: "orchestrator"
+        version: "v1.0.0"
+        traffic_percentage: 50
+        
+      - name: "treatment"
+        description: "新版任务拆解"
+        agent: "orchestrator"
+        version: "v1.1.0"
+        traffic_percentage: 50
+    
+    # 评估指标
+    metrics:
+      primary:
+        - name: "task_completion_rate"
+          description: "任务完成率"
+          target: ">= 95%"
+          
+      secondary:
+        - name: "average_iterations"
+          description: "平均迭代次数"
+          target: "<= 2"
+          
+        - name: "user_satisfaction"
+          description: "用户满意度评分"
+          target: ">= 4.0"
+    
+    # 实验参数
+    settings:
+      min_sample_size: 100
+      max_duration_days: 14
+      significance_level: 0.05
+
+  # 实验 2: Developer 代码生成质量优化
+  - name: "developer-code-quality-v1.1"
+    status: "draft"
+    description: "测试增强代码规范约束后的代码质量"
+    
+    hypothesis: "更严格的代码规范约束可以减少审查问题"
+    
+    variants:
+      - name: "control"
+        agent: "developer"
+        version: "v1.0.0"
+        traffic_percentage: 50
+        
+      - name: "treatment"
+        agent: "developer"
+        version: "v1.1.0"
+        traffic_percentage: 50
+    
+    metrics:
+      primary:
+        - name: "code_review_issues"
+          description: "代码审查问题数"
+          target: "<= 2"
+          
+      secondary:
+        - name: "test_coverage"
+          description: "测试覆盖率"
+          target: ">= 80%"
+    
+    settings:
+      min_sample_size: 50
+      max_duration_days: 7
+
+# ============================================
+# 全局配置
+# ============================================
+
+global_settings:
+  # 流量分配策略
+  traffic_allocation: "random"  # random | user_hash | session_hash
+  
+  # 指标收集
+  metrics_collection:
+    enabled: true
+    storage: "evolution/metrics/raw/"
+    
+  # 自动决策
+  auto_decision:
+    enabled: false
+    min_confidence: 0.95
+
+# ============================================
+# 使用说明
+# ============================================
+#
+# 1. 创建新实验:
+#    - 复制上面的实验模板
+#    - 修改 name, variants, metrics 等配置
+#    - 设置 status 为 "draft"
+#
+# 2. 启动实验:
+#    - 确保新版本 Prompt 已就绪
+#    - 修改 status 为 "running"
+#
+# 3. 分析结果:
+#    - 查看 evolution/metrics/ 目录的数据
+#    - 使用统计方法判断显著性
+#
+# 4. 完成实验:
+#    - 修改 status 为 "completed"
+#    - 记录结论到对应 Agent 的 changelog

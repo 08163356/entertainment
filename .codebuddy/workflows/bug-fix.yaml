@@ -1,0 +1,133 @@
+# Bug 修复工作流
+# 快速定位和修复问题的流程
+
+name: "bug-fix"
+description: "Bug 修复流程 - 从问题定位到验证修复"
+version: "1.0.0"
+
+# ============================================
+# 工作流阶段
+# ============================================
+
+stages:
+  # 阶段 1: 问题定位
+  - name: "issue_analysis"
+    display_name: "问题定位"
+    description: "分析问题，定位根因"
+    
+    executor:
+      primary: "orchestrator"
+      support: ["researcher"]
+    
+    inputs:
+      - name: "bug_description"
+        type: "string"
+        required: true
+        description: "Bug 描述"
+      - name: "error_logs"
+        type: "string"
+        required: false
+        description: "错误日志"
+    
+    outputs:
+      - name: "root_cause"
+        type: "document"
+        description: "根因分析"
+      - name: "affected_files"
+        type: "list"
+        description: "受影响的文件"
+    
+    quality_gate:
+      type: "review"
+      reviewer: "orchestrator"
+      criteria:
+        - "根因定位准确"
+        - "影响范围明确"
+
+  # 阶段 2: 修复实现
+  - name: "fix_implementation"
+    display_name: "修复实现"
+    description: "编写修复代码"
+    
+    executor:
+      primary: "developer"
+      support: ["researcher"]
+    
+    inputs:
+      - name: "root_cause"
+        type: "document"
+        from_stage: "issue_analysis"
+      - name: "affected_files"
+        type: "list"
+        from_stage: "issue_analysis"
+    
+    outputs:
+      - name: "fix_code"
+        type: "code"
+        description: "修复代码"
+      - name: "regression_tests"
+        type: "code"
+        description: "回归测试"
+    
+    quality_gate:
+      type: "automated"
+      checks:
+        - name: "tests_pass"
+          required: true
+
+  # 阶段 3: 验证修复
+  - name: "fix_verification"
+    display_name: "验证修复"
+    description: "验证修复是否有效"
+    
+    executor:
+      primary: "qa"
+    
+    inputs:
+      - name: "fix_code"
+        type: "code"
+        from_stage: "fix_implementation"
+      - name: "bug_description"
+        type: "string"
+        from_stage: "issue_analysis"
+    
+    outputs:
+      - name: "verification_report"
+        type: "document"
+        description: "验证报告"
+    
+    quality_gate:
+      type: "checklist"
+      items:
+        - "原问题已修复"
+        - "未引入新问题"
+        - "回归测试通过"
+
+# ============================================
+# 流程控制
+# ============================================
+
+flow_control:
+  default_order:
+    - "issue_analysis"
+    - "fix_implementation"
+    - "fix_verification"
+  
+  # 紧急模式：跳过部分验证
+  conditions:
+    - if: "priority == 'critical'"
+      parallel: true
+      message: "紧急修复，并行执行"
+
+# ============================================
+# 超时配置
+# ============================================
+
+timeouts:
+  stage_default: "20m"
+  workflow_total: "2h"
+  
+  per_stage:
+    issue_analysis: "30m"
+    fix_implementation: "1h"
+    fix_verification: "30m"

@@ -1,0 +1,214 @@
+# 功能开发工作流
+# 定义从需求到交付的完整开发流程
+
+name: "feature-dev"
+description: "功能开发流程 - 从需求分析到代码交付"
+version: "1.0.0"
+
+# ============================================
+# 工作流阶段
+# ============================================
+
+stages:
+  # 阶段 1: 需求分析
+  - name: "requirement_analysis"
+    display_name: "需求分析"
+    description: "理解需求，拆解任务"
+    
+    executor:
+      primary: "orchestrator"
+      support: ["researcher"]
+    
+    inputs:
+      - name: "user_requirement"
+        type: "string"
+        required: true
+        description: "用户需求描述"
+    
+    outputs:
+      - name: "requirement_report"
+        type: "document"
+        description: "需求分析报告"
+      - name: "task_list"
+        type: "list"
+        description: "任务拆解清单"
+    
+    quality_gate:
+      type: "score"
+      min_score: 7
+      max_score: 10
+      retry_on_fail: true
+      max_retries: 2
+
+  # 阶段 2: 架构设计
+  - name: "architecture_design"
+    display_name: "架构设计"
+    description: "设计系统架构和技术方案"
+    
+    executor:
+      primary: "architect"
+      support: ["researcher"]
+    
+    inputs:
+      - name: "requirement_report"
+        type: "document"
+        from_stage: "requirement_analysis"
+    
+    outputs:
+      - name: "architecture_doc"
+        type: "document"
+        description: "架构设计文档"
+      - name: "tech_stack"
+        type: "document"
+        description: "技术选型说明"
+    
+    quality_gate:
+      type: "review"
+      reviewer: "orchestrator"
+      criteria:
+        - "架构清晰合理"
+        - "技术选型有依据"
+        - "风险已识别"
+
+  # 阶段 3: 编码实现
+  - name: "implementation"
+    display_name: "编码实现"
+    description: "编写代码和测试"
+    
+    executor:
+      primary: "developer"
+      support: ["researcher"]
+    
+    inputs:
+      - name: "task_list"
+        type: "list"
+        from_stage: "requirement_analysis"
+      - name: "architecture_doc"
+        type: "document"
+        from_stage: "architecture_design"
+    
+    outputs:
+      - name: "code_changes"
+        type: "code"
+        description: "代码变更"
+      - name: "unit_tests"
+        type: "code"
+        description: "单元测试"
+    
+    quality_gate:
+      type: "automated"
+      checks:
+        - name: "tests_pass"
+          required: true
+        - name: "coverage"
+          min_value: 80
+          required: true
+
+  # 阶段 4: 质量验证
+  - name: "quality_assurance"
+    display_name: "质量验证"
+    description: "代码审查和测试验证"
+    
+    executor:
+      primary: "qa"
+      support: ["researcher"]
+    
+    inputs:
+      - name: "code_changes"
+        type: "code"
+        from_stage: "implementation"
+    
+    outputs:
+      - name: "review_report"
+        type: "document"
+        description: "代码审查报告"
+      - name: "test_report"
+        type: "document"
+        description: "测试报告"
+      - name: "deployment_checklist"
+        type: "checklist"
+        description: "部署检查清单"
+    
+    quality_gate:
+      type: "review"
+      reviewer: "orchestrator"
+      criteria:
+        - "无严重问题"
+        - "安全检查通过"
+        - "测试覆盖充分"
+    
+    # QA 可以自动修复问题
+    auto_fix:
+      enabled: true
+      types:
+        - "format"
+        - "simple_logic"
+        - "missing_checks"
+
+# ============================================
+# 流程控制
+# ============================================
+
+flow_control:
+  # 默认执行顺序
+  default_order:
+    - "requirement_analysis"
+    - "architecture_design"
+    - "implementation"
+    - "quality_assurance"
+  
+  # 条件跳转
+  conditions:
+    # 简单任务可跳过架构设计
+    - if: "task_complexity <= 3"
+      skip: ["architecture_design"]
+    
+    # 紧急修复可跳过完整流程
+    - if: "task_type == 'hotfix'"
+      only: ["implementation", "quality_assurance"]
+  
+  # 回退规则
+  rollback:
+    - on_fail: "implementation"
+      goto: "architecture_design"
+      message: "实现问题可能源于设计缺陷"
+    
+    - on_fail: "architecture_design"
+      goto: "requirement_analysis"
+      message: "设计问题可能源于需求理解偏差"
+
+# ============================================
+# 超时和重试
+# ============================================
+
+timeouts:
+  stage_default: "30m"
+  workflow_total: "4h"
+  
+  per_stage:
+    requirement_analysis: "30m"
+    architecture_design: "45m"
+    implementation: "2h"
+    quality_assurance: "45m"
+
+retries:
+  max_retries: 3
+  backoff_multiplier: 2
+  initial_delay: "1m"
+
+# ============================================
+# 通知配置
+# ============================================
+
+notifications:
+  on_stage_complete:
+    enabled: true
+    message: "阶段 {stage_name} 完成"
+  
+  on_quality_gate_fail:
+    enabled: true
+    message: "质量门禁未通过: {reason}"
+  
+  on_workflow_complete:
+    enabled: true
+    message: "工作流完成，总耗时: {duration}"

@@ -1,0 +1,172 @@
+# 模型映射配置
+# 定义 Agent 使用的 LLM 模型
+
+# ============================================
+# 模型层级定义
+# ============================================
+
+tiers:
+  high:
+    description: "高成本层级，用于复杂决策和深度推理"
+    use_cases:
+      - "架构设计"
+      - "复杂需求分析"
+      - "技术选型"
+      - "全局协调"
+    budget_priority: "quality_first"
+
+  medium:
+    description: "中等成本层级，平衡质量和成本"
+    use_cases:
+      - "编码实现"
+      - "代码审查"
+      - "测试编写"
+    budget_priority: "balanced"
+
+  low:
+    description: "低成本层级，用于高频低复杂度任务"
+    use_cases:
+      - "信息检索"
+      - "代码扫描"
+      - "格式处理"
+    budget_priority: "cost_first"
+
+# ============================================
+# 模型配置
+# ============================================
+
+models:
+  # Claude 系列
+  claude-opus:
+    provider: "anthropic"
+    model_id: "claude-opus-4"
+    tier: "high"
+    strengths:
+      - "深度推理"
+      - "复杂任务"
+      - "全局把控"
+    max_tokens: 4096
+    cost_per_1k_input: 0.015
+    cost_per_1k_output: 0.075
+
+  claude-sonnet:
+    provider: "anthropic"
+    model_id: "claude-sonnet-4"
+    tier: "medium"
+    strengths:
+      - "代码生成"
+      - "平衡性能"
+    max_tokens: 4096
+    cost_per_1k_input: 0.003
+    cost_per_1k_output: 0.015
+
+  claude-haiku:
+    provider: "anthropic"
+    model_id: "claude-haiku"
+    tier: "low"
+    strengths:
+      - "快速响应"
+      - "简单任务"
+    max_tokens: 4096
+    cost_per_1k_input: 0.00025
+    cost_per_1k_output: 0.00125
+
+  # GPT 系列 (备选)
+  gpt-4.5:
+    provider: "openai"
+    model_id: "gpt-4.5-preview"
+    tier: "high"
+    strengths:
+      - "创意设计"
+      - "多模态"
+    max_tokens: 4096
+    cost_per_1k_input: 0.01
+    cost_per_1k_output: 0.03
+
+  gpt-4o:
+    provider: "openai"
+    model_id: "gpt-4o"
+    tier: "medium"
+    strengths:
+      - "通用能力"
+      - "多模态"
+    max_tokens: 4096
+    cost_per_1k_input: 0.005
+    cost_per_1k_output: 0.015
+
+  # Gemini 系列 (备选)
+  gemini-pro:
+    provider: "google"
+    model_id: "gemini-pro"
+    tier: "low"
+    strengths:
+      - "长上下文"
+      - "成本低"
+    max_tokens: 8192
+    cost_per_1k_input: 0.0005
+    cost_per_1k_output: 0.0015
+
+# ============================================
+# 角色-模型映射
+# ============================================
+
+role_model_mapping:
+  orchestrator:
+    primary: "claude-opus"
+    fallback: "gpt-4.5"
+
+  architect:
+    primary: "claude-opus"
+    fallback: "gpt-4.5"
+
+  developer:
+    primary: "claude-sonnet"
+    fallback: "gpt-4o"
+
+  researcher:
+    primary: "claude-haiku"
+    fallback: "gemini-pro"
+
+  qa:
+    primary: "claude-sonnet"
+    fallback: "gpt-4o"
+
+# ============================================
+# 成本优化策略
+# ============================================
+
+cost_optimization:
+  # 任务复杂度自动降级
+  auto_downgrade:
+    enabled: true
+    conditions:
+      - task_type: "simple_search"
+        downgrade_to: "low"
+      - task_type: "format_conversion"
+        downgrade_to: "low"
+
+  # 批量处理优化
+  batching:
+    enabled: true
+    max_batch_size: 10
+    
+  # 缓存策略
+  caching:
+    enabled: true
+    ttl_seconds: 3600
+    cache_similar_queries: true
+
+# ============================================
+# 使用限制
+# ============================================
+
+limits:
+  daily_budget: 100  # USD
+  max_tokens_per_request: 8192
+  rate_limit_per_minute: 60
+  
+  # 单任务限制
+  per_task:
+    max_iterations: 5
+    max_tokens: 50000
+    timeout_minutes: 30
