@@ -524,7 +524,7 @@ onMounted(() => {
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    opacity: 0.15;
+    opacity: 0.75;
     z-index: -1;
     pointer-events: none;
   }

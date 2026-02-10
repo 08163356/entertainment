@@ -17,7 +17,7 @@ class WebSocketService {
     
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
-    const wsUrl = `${protocol}//${host}/ws/${roomId}?userName=${encodeURIComponent(userName)}`
+    const wsUrl = `${protocol}//${host}/entertainment/ws/${roomId}?userName=${encodeURIComponent(userName)}`
     
     this.ws = new WebSocket(wsUrl)
     

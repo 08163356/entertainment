@@ -2,7 +2,7 @@ import axios from 'axios'
 import type { Room, MatchRecord, PlayerStats } from '@/types/billiards'
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: '/entertainment/api',
   timeout: 10000
 })
 

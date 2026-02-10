@@ -665,21 +665,21 @@ onUnmounted(() => {
   position: relative;
   
   // 对局房间背景图
-  &::before {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-image: url('@/assets/对局房间背景.png');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    opacity: 0.12;
-    z-index: -1;
-    pointer-events: none;
-  }
+//   &::before {
+//     content: '';
+//     position: fixed;
+//     top: 0;
+//     left: 0;
+//     right: 0;
+//     bottom: 0;
+//     background-image: url('@/assets/对局房间背景.png');
+//     background-size: cover;
+//     background-position: center;
+//     background-repeat: no-repeat;
+//     opacity: 0.12;
+//     z-index: -1;
+//     pointer-events: none;
+//   }
 }
 
 .header {
