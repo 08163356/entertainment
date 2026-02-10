@@ -136,6 +136,24 @@ onMounted(() => {
 .history-page {
   min-height: 100vh;
   padding: 20px;
+  position: relative;
+  
+  // 历史记录页面背景
+  &::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url('@/assets/历史记录页面装饰.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0.1;
+    z-index: -1;
+    pointer-events: none;
+  }
 }
 
 .header {
@@ -158,13 +176,15 @@ onMounted(() => {
 
 .empty-state {
   text-align: center;
-  padding: 80px 20px;
+  padding: 60px 20px;
   color: var(--text-secondary);
   
-  .empty-icon {
-    font-size: 64px;
+  .empty-img {
+    width: 180px;
+    height: auto;
     margin-bottom: 16px;
-    opacity: 0.5;
+    opacity: 0.8;
+    border-radius: 12px;
   }
   
   p {

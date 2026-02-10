@@ -1,0 +1,6 @@
+{
+  "name": "entertainment",
+  "private": true,
+  "workspaces": ["frontend"]
+}
+

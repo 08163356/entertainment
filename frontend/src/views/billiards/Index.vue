@@ -48,7 +48,10 @@
                 <t-icon name="chevron-right" class="arrow" />
               </div>
             </div>
-            <div v-else class="empty-tip">暂无进行中的比赛</div>
+            <div v-else class="empty-tip">
+              <img src="@/assets/空状态图.png" alt="暂无数据" class="empty-img" />
+              <p>暂无进行中的比赛</p>
+            </div>
           </div>
         </t-collapse-transition>
       </div>
@@ -507,6 +510,24 @@ onMounted(() => {
 .billiards-page {
   min-height: 100vh;
   padding: 20px;
+  position: relative;
+  
+  // 背景图
+  &::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url('@/assets/首页背景.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0.15;
+    z-index: -1;
+    pointer-events: none;
+  }
 }
 
 .header {
@@ -754,6 +775,18 @@ onMounted(() => {
   padding: 24px;
   color: var(--text-secondary);
   font-size: 14px;
+  
+  .empty-img {
+    width: 120px;
+    height: auto;
+    margin-bottom: 12px;
+    opacity: 0.7;
+    border-radius: 8px;
+  }
+  
+  p {
+    margin: 0;
+  }
 }
 
 // 身份选择弹窗
