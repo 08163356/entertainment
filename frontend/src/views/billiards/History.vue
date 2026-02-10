@@ -23,33 +23,38 @@
           >
             <div class="match-header">
               <span class="match-date">{{ formatDate(match.settledAt) }}</span>
-              <t-tag size="small">{{ getGameTypeLabel(match.gameType) }}</t-tag>
+              <t-tag size="small" variant="outline">{{ getGameTypeLabel(match.gameType) }}</t-tag>
             </div>
             
             <div class="match-players">
               <div class="player" :class="{ winner: match.settlement.winner === match.players[0] }">
                 <span class="name">{{ match.players[0] }}</span>
-                <span class="wins">{{ getPlayerWins(match, match.players[0]) }}局</span>
-                <span class="balls">{{ getPlayerBalls(match, match.players[0]) }}球</span>
+                <div class="stats">
+                  <span class="wins">{{ getPlayerWins(match, match.players[0]) }}局</span>
+                  <span class="balls">{{ getPlayerBalls(match, match.players[0]) }}球</span>
+                </div>
               </div>
-              <div class="vs">VS</div>
+              <div class="score-badge">
+                {{ match.settlement.score }}
+              </div>
               <div class="player" :class="{ winner: match.settlement.winner === match.players[1] }">
                 <span class="name">{{ match.players[1] }}</span>
-                <span class="wins">{{ getPlayerWins(match, match.players[1]) }}局</span>
-                <span class="balls">{{ getPlayerBalls(match, match.players[1]) }}球</span>
+                <div class="stats">
+                  <span class="wins">{{ getPlayerWins(match, match.players[1]) }}局</span>
+                  <span class="balls">{{ getPlayerBalls(match, match.players[1]) }}球</span>
+                </div>
               </div>
             </div>
             
-            <div class="match-result">
-              <div class="score">{{ match.settlement.score }}</div>
-              <div class="settlement" v-if="match.settlement.winner">
-                <span class="loser">{{ match.settlement.loser }}</span>
-                支付
-                <span class="amount">¥{{ match.settlement.amount }}</span>
-                给
-                <span class="winner">{{ match.settlement.winner }}</span>
-              </div>
-              <div class="settlement draw" v-else>平局</div>
+            <div class="match-settlement" v-if="match.settlement.winner">
+              <span class="loser">{{ match.settlement.loser }}</span>
+              <span class="arrow">→</span>
+              <span class="amount">¥{{ match.settlement.amount }}</span>
+              <span class="arrow">→</span>
+              <span class="winner">{{ match.settlement.winner }}</span>
+            </div>
+            <div class="match-settlement draw" v-else>
+              <span>平局</span>
             </div>
           </div>
         </div>
@@ -137,11 +142,12 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
+  margin-bottom: 24px;
   
   h1 {
-    font-size: 24px;
+    font-size: 22px;
     color: var(--text-color);
+    font-weight: 700;
   }
 }
 
@@ -152,12 +158,17 @@ onMounted(() => {
 
 .empty-state {
   text-align: center;
-  padding: 60px 20px;
+  padding: 80px 20px;
   color: var(--text-secondary);
   
   .empty-icon {
     font-size: 64px;
     margin-bottom: 16px;
+    opacity: 0.5;
+  }
+  
+  p {
+    font-size: 16px;
   }
 }
 
@@ -169,8 +180,18 @@ onMounted(() => {
 
 .match-card {
   background: var(--card-bg);
-  border-radius: 16px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
   padding: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  }
   
   .match-header {
     display: flex;
@@ -180,7 +201,7 @@ onMounted(() => {
     
     .match-date {
       color: var(--text-secondary);
-      font-size: 14px;
+      font-size: 13px;
     }
   }
   
@@ -194,57 +215,68 @@ onMounted(() => {
       flex: 1;
       text-align: center;
       
-      &.winner {
-        .name {
-          color: var(--success-color);
-        }
+      &.winner .name {
+        color: var(--success-color);
       }
       
       .name {
         display: block;
-        font-size: 20px;
-        font-weight: bold;
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text-color);
         margin-bottom: 4px;
       }
       
-      .wins, .balls {
-        font-size: 14px;
+      .stats {
+        font-size: 12px;
         color: var(--text-secondary);
-        margin-right: 8px;
+        
+        span {
+          margin: 0 4px;
+        }
       }
     }
     
-    .vs {
-      padding: 0 20px;
-      color: var(--text-secondary);
-      font-weight: bold;
+    .score-badge {
+      padding: 8px 20px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--text-color);
+      letter-spacing: 2px;
     }
   }
   
-  .match-result {
-    text-align: center;
-    padding-top: 16px;
-    border-top: 1px solid var(--border-color);
+  .match-settlement {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    font-size: 14px;
     
-    .score {
-      font-size: 28px;
-      font-weight: bold;
-      margin-bottom: 8px;
+    .loser { 
+      color: var(--error-color); 
+      font-weight: 600;
+    }
+    .winner { 
+      color: var(--success-color); 
+      font-weight: 600;
+    }
+    .amount { 
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--warning-color);
+    }
+    .arrow {
+      color: var(--text-secondary);
     }
     
-    .settlement {
-      font-size: 14px;
-      
-      .loser { color: var(--error-color); }
-      .winner { color: var(--success-color); }
-      .amount { 
-        font-weight: bold;
-        color: var(--warning-color);
-      }
-      
-      &.draw {
-        color: var(--text-secondary);
-      }
+    &.draw {
+      color: var(--text-secondary);
     }
   }
 }
@@ -253,5 +285,20 @@ onMounted(() => {
   margin-top: 24px;
   display: flex;
   justify-content: center;
+}
+
+@media (max-width: 480px) {
+  .match-card .match-players {
+    flex-direction: column;
+    gap: 12px;
+    
+    .score-badge {
+      order: -1;
+    }
+    
+    .player {
+      width: 100%;
+    }
+  }
 }
 </style>

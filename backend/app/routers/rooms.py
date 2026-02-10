@@ -20,6 +20,19 @@ def generate_room_id() -> str:
     """生成4位数字房间号"""
     return ''.join(random.choices(string.digits, k=4))
 
+@router.get("/active", response_model=list)
+async def get_active_rooms():
+    """获取所有进行中的房间"""
+    active_rooms = []
+    for room_id, room in room_manager.rooms.items():
+        if room["status"] == "playing":
+            active_rooms.append({
+                "roomId": room_id,
+                "players": [p["name"] for p in room["players"]],
+                "roundCount": len(room["rounds"])
+            })
+    return active_rooms
+
 @router.post("", response_model=dict)
 async def create_room(data: RoomCreate, db: AsyncSession = Depends(get_db)):
     """创建房间"""
@@ -73,11 +86,19 @@ async def get_room(room_id: str):
     return room
 
 @router.post("/{room_id}/join", response_model=RoomResponse)
-async def join_room(room_id: str, data: RoomJoin):
+async def join_room(room_id: str, data: RoomJoin, db: AsyncSession = Depends(get_db)):
     """加入房间"""
     room = room_manager.get_room(room_id)
     if not room:
         raise HTTPException(status_code=404, detail="房间不存在或已关闭")
+    
+    # 确保玩家存在于数据库（新玩家自动入库）
+    result = await db.execute(select(Player).where(Player.name == data.userName))
+    existing = result.scalar_one_or_none()
+    if not existing:
+        db_player = Player(name=data.userName, is_preset=False)
+        db.add(db_player)
+        await db.commit()
     
     room_manager.add_spectator(room_id, data.userName)
     return room_manager.get_room(room_id)

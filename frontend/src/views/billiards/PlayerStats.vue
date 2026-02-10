@@ -10,7 +10,7 @@
 
     <main class="main-content">
       <t-loading :loading="loading">
-        <!-- 总览卡片 -->
+        <!-- 总览卡片（固定显示） -->
         <div class="stats-overview">
           <div class="stat-card">
             <div class="stat-value">{{ stats?.totalMatches || 0 }}</div>
@@ -30,76 +30,111 @@
           </div>
         </div>
 
-        <!-- 盈亏统计 -->
-        <div class="card profit-section">
-          <h3>盈亏统计</h3>
-          <div class="profit-display" :class="profitClass">
-            <span class="label">累计盈亏</span>
-            <span class="value">{{ profitText }}</span>
+        <!-- 盈亏统计（可折叠） -->
+        <div class="card collapsible-section">
+          <div class="section-header" @click="toggleSection('profit')">
+            <h3>盈亏统计</h3>
+            <t-icon :name="expandedSections.profit ? 'chevron-up' : 'chevron-down'" />
           </div>
-          <div class="ball-stats">
-            <div class="ball-item">
-              <span class="label">赢球总数</span>
-              <span class="value">{{ stats?.totalBallsWon || 0 }}</span>
+          <t-collapse-transition>
+            <div class="section-content" v-show="expandedSections.profit">
+              <div class="profit-display" :class="profitClass">
+                <span class="label">累计盈亏</span>
+                <span class="value">{{ profitText }}</span>
+              </div>
+              <div class="ball-stats">
+                <div class="ball-item">
+                  <span class="label">赢球总数</span>
+                  <span class="value positive">{{ stats?.totalBallsWon || 0 }}</span>
+                </div>
+                <div class="ball-item">
+                  <span class="label">输球总数</span>
+                  <span class="value negative">{{ stats?.totalBallsLost || 0 }}</span>
+                </div>
+                <div class="ball-item">
+                  <span class="label">净球数</span>
+                  <span class="value" :class="{ positive: (stats?.netBalls || 0) > 0, negative: (stats?.netBalls || 0) < 0 }">
+                    {{ stats?.netBalls || 0 }}
+                  </span>
+                </div>
+              </div>
             </div>
-            <div class="ball-item">
-              <span class="label">输球总数</span>
-              <span class="value">{{ stats?.totalBallsLost || 0 }}</span>
-            </div>
-            <div class="ball-item">
-              <span class="label">净球数</span>
-              <span class="value" :class="{ positive: (stats?.netBalls || 0) > 0, negative: (stats?.netBalls || 0) < 0 }">
-                {{ stats?.netBalls || 0 }}
-              </span>
-            </div>
-          </div>
+          </t-collapse-transition>
         </div>
 
-        <!-- 对手分析 -->
-        <div class="card opponents-section">
-          <h3>对手战绩</h3>
-          <div class="opponents-chart" ref="opponentsChartRef"></div>
-          <div class="opponents-list">
-            <div 
-              v-for="op in stats?.opponentStats" 
-              :key="op.opponent"
-              class="opponent-item"
-            >
-              <div class="opponent-name">{{ op.opponent }}</div>
-              <div class="opponent-record">
-                {{ op.wins }}胜 {{ op.losses }}负 ({{ (op.winRate * 100).toFixed(0) }}%)
-              </div>
-              <div class="opponent-profit" :class="{ positive: op.netAmount > 0, negative: op.netAmount < 0 }">
-                {{ op.netAmount > 0 ? '+' : '' }}¥{{ op.netAmount }}
-              </div>
-            </div>
+        <!-- 对手分析（可折叠） -->
+        <div class="card collapsible-section">
+          <div class="section-header" @click="toggleSection('opponents')">
+            <h3>对手战绩</h3>
+            <t-icon :name="expandedSections.opponents ? 'chevron-up' : 'chevron-down'" />
           </div>
+          <t-collapse-transition>
+            <div class="section-content" v-show="expandedSections.opponents">
+              <div class="opponents-chart" ref="opponentsChartRef" v-if="stats?.opponentStats?.length"></div>
+              <div class="opponents-list" v-if="stats?.opponentStats?.length">
+                <div 
+                  v-for="op in stats.opponentStats" 
+                  :key="op.opponent"
+                  class="opponent-item"
+                >
+                  <div class="opponent-info">
+                    <div class="opponent-name">{{ op.opponent }}</div>
+                    <div class="opponent-record">
+                      <span class="wins">{{ op.wins }}胜</span>
+                      <span class="losses">{{ op.losses }}负</span>
+                      <span class="rate">({{ (op.winRate * 100).toFixed(0) }}%)</span>
+                    </div>
+                  </div>
+                  <div class="opponent-profit" :class="{ positive: op.netAmount > 0, negative: op.netAmount < 0 }">
+                    {{ op.netAmount > 0 ? '+' : '' }}¥{{ op.netAmount }}
+                  </div>
+                </div>
+              </div>
+              <div class="empty-tip" v-else>暂无对战记录</div>
+            </div>
+          </t-collapse-transition>
         </div>
 
-        <!-- 走势图 -->
-        <div class="card trend-section">
-          <h3>盈亏走势</h3>
-          <div class="trend-chart" ref="trendChartRef"></div>
+        <!-- 走势图（可折叠） -->
+        <div class="card collapsible-section">
+          <div class="section-header" @click="toggleSection('trend')">
+            <h3>盈亏走势</h3>
+            <t-icon :name="expandedSections.trend ? 'chevron-up' : 'chevron-down'" />
+          </div>
+          <t-collapse-transition>
+            <div class="section-content" v-show="expandedSections.trend">
+              <div class="trend-chart" ref="trendChartRef" v-if="stats?.recentMatches?.length"></div>
+              <div class="empty-tip" v-else>暂无数据</div>
+            </div>
+          </t-collapse-transition>
         </div>
 
-        <!-- 最近比赛 -->
-        <div class="card recent-section">
-          <h3>最近比赛</h3>
-          <div class="recent-list">
-            <div 
-              v-for="match in stats?.recentMatches" 
-              :key="match.id"
-              class="recent-item"
-            >
-              <div class="match-info">
-                <span class="opponent">vs {{ getOpponent(match) }}</span>
-                <span class="date">{{ formatDate(match.settledAt) }}</span>
-              </div>
-              <div class="match-result" :class="getResultClass(match)">
-                {{ getResultText(match) }}
-              </div>
-            </div>
+        <!-- 最近比赛（可折叠） -->
+        <div class="card collapsible-section">
+          <div class="section-header" @click="toggleSection('recent')">
+            <h3>最近比赛</h3>
+            <t-icon :name="expandedSections.recent ? 'chevron-up' : 'chevron-down'" />
           </div>
+          <t-collapse-transition>
+            <div class="section-content" v-show="expandedSections.recent">
+              <div class="recent-list" v-if="stats?.recentMatches?.length">
+                <div 
+                  v-for="match in stats.recentMatches" 
+                  :key="match.id"
+                  class="recent-item"
+                >
+                  <div class="match-info">
+                    <span class="opponent">vs {{ getOpponent(match) }}</span>
+                    <span class="date">{{ formatDate(match.settledAt) }}</span>
+                  </div>
+                  <div class="match-result" :class="getResultClass(match)">
+                    {{ getResultText(match) }}
+                  </div>
+                </div>
+              </div>
+              <div class="empty-tip" v-else>暂无比赛记录</div>
+            </div>
+          </t-collapse-transition>
         </div>
       </t-loading>
     </main>
@@ -119,6 +154,14 @@ const router = useRouter()
 const playerName = computed(() => decodeURIComponent(route.params.name as string))
 const loading = ref(false)
 const stats = ref<PlayerStats | null>(null)
+
+// 折叠状态
+const expandedSections = ref({
+  profit: true,
+  opponents: true,
+  trend: false,
+  recent: true
+})
 
 const opponentsChartRef = ref<HTMLElement>()
 const trendChartRef = ref<HTMLElement>()
@@ -142,6 +185,18 @@ const profitText = computed(() => {
   return '¥0'
 })
 
+function toggleSection(section: keyof typeof expandedSections.value) {
+  expandedSections.value[section] = !expandedSections.value[section]
+  
+  // 展开时重新渲染图表
+  if (expandedSections.value[section]) {
+    nextTick(() => {
+      if (section === 'opponents') renderOpponentsChart()
+      if (section === 'trend') renderTrendChart()
+    })
+  }
+}
+
 async function loadStats() {
   loading.value = true
   try {
@@ -156,8 +211,8 @@ async function loadStats() {
 }
 
 function renderCharts() {
-  renderOpponentsChart()
-  renderTrendChart()
+  if (expandedSections.value.opponents) renderOpponentsChart()
+  if (expandedSections.value.trend) renderTrendChart()
 }
 
 function renderOpponentsChart() {
@@ -175,7 +230,10 @@ function renderOpponentsChart() {
   opponentsChart.setOption({
     tooltip: {
       trigger: 'item',
-      formatter: '{b}: {c}场 ({d}%)'
+      formatter: '{b}: {c}场 ({d}%)',
+      backgroundColor: 'rgba(20, 20, 30, 0.9)',
+      borderColor: 'rgba(255, 255, 255, 0.1)',
+      textStyle: { color: '#fff' }
     },
     series: [{
       type: 'pie',
@@ -183,10 +241,18 @@ function renderOpponentsChart() {
       data,
       label: {
         show: true,
-        formatter: '{b}'
+        formatter: '{b}',
+        color: 'rgba(255, 255, 255, 0.8)'
+      },
+      itemStyle: {
+        borderRadius: 8,
+        borderColor: 'rgba(0, 0, 0, 0.3)',
+        borderWidth: 2
       }
     }]
   })
+  
+  opponentsChart.resize()
 }
 
 function renderTrendChart() {
@@ -196,7 +262,6 @@ function renderTrendChart() {
     trendChart = echarts.init(trendChartRef.value)
   }
   
-  // 计算累计盈亏
   let cumulative = 0
   const matches = [...stats.value.recentMatches].reverse()
   const data = matches.map(match => {
@@ -212,34 +277,58 @@ function renderTrendChart() {
   trendChart.setOption({
     tooltip: {
       trigger: 'axis',
-      formatter: '{b}<br/>累计: ¥{c}'
+      formatter: '{b}<br/>累计: ¥{c}',
+      backgroundColor: 'rgba(20, 20, 30, 0.9)',
+      borderColor: 'rgba(255, 255, 255, 0.1)',
+      textStyle: { color: '#fff' }
+    },
+    grid: {
+      left: '10%',
+      right: '5%',
+      bottom: '15%',
+      top: '10%'
     },
     xAxis: {
       type: 'category',
       data: data.map(d => d.date),
       axisLabel: {
         rotate: 45,
-        fontSize: 10
-      }
+        fontSize: 10,
+        color: 'rgba(255, 255, 255, 0.6)'
+      },
+      axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.1)' } }
     },
     yAxis: {
       type: 'value',
       axisLabel: {
-        formatter: '¥{value}'
-      }
+        formatter: '¥{value}',
+        color: 'rgba(255, 255, 255, 0.6)'
+      },
+      axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.1)' } },
+      splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.05)' } }
     },
     series: [{
       type: 'line',
       data: data.map(d => d.value),
       smooth: true,
       areaStyle: {
-        opacity: 0.3
+        opacity: 0.3,
+        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: 'rgba(82, 196, 26, 0.4)' },
+          { offset: 1, color: 'rgba(82, 196, 26, 0)' }
+        ])
+      },
+      lineStyle: {
+        color: '#52c41a',
+        width: 3
       },
       itemStyle: {
-        color: '#1a5d1a'
+        color: '#52c41a'
       }
     }]
   })
+  
+  trendChart.resize()
 }
 
 function getOpponent(match: MatchRecord) {
@@ -289,11 +378,12 @@ watch(() => route.params.name, () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
+  margin-bottom: 24px;
   
   h1 {
-    font-size: 24px;
+    font-size: 22px;
     color: var(--text-color);
+    font-weight: 700;
   }
 }
 
@@ -302,9 +392,10 @@ watch(() => route.params.name, () => {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
+// 总览卡片
 .stats-overview {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -312,8 +403,10 @@ watch(() => route.params.name, () => {
   
   .stat-card {
     background: var(--card-bg);
-    border-radius: 12px;
-    padding: 20px;
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 20px 12px;
     text-align: center;
     
     &.win .stat-value { color: var(--success-color); }
@@ -321,161 +414,211 @@ watch(() => route.params.name, () => {
     
     .stat-value {
       font-size: 28px;
-      font-weight: bold;
+      font-weight: 800;
       color: var(--text-color);
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
     }
     
     .stat-label {
-      font-size: 14px;
+      font-size: 12px;
       color: var(--text-secondary);
       margin-top: 4px;
     }
   }
 }
 
+// 可折叠卡片
 .card {
   background: var(--card-bg);
-  border-radius: 16px;
-  padding: 20px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.collapsible-section {
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 20px;
+    cursor: pointer;
+    transition: background 0.2s;
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+    
+    h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-color);
+      margin: 0;
+    }
+    
+    .t-icon {
+      color: var(--text-secondary);
+      transition: transform 0.3s;
+    }
+  }
   
-  h3 {
-    font-size: 18px;
-    margin-bottom: 16px;
-    color: var(--text-color);
+  .section-content {
+    padding: 0 20px 20px;
   }
 }
 
-.profit-section {
-  .profit-display {
+// 盈亏统计
+.profit-display {
+  text-align: center;
+  padding: 24px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  margin-bottom: 20px;
+  
+  &.positive .value { color: var(--success-color); }
+  &.negative .value { color: var(--error-color); }
+  
+  .label {
+    display: block;
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+  }
+  
+  .value {
+    font-size: 40px;
+    font-weight: 800;
+    text-shadow: 0 2px 15px rgba(0, 0, 0, 0.3);
+  }
+}
+
+.ball-stats {
+  display: flex;
+  justify-content: space-around;
+  
+  .ball-item {
     text-align: center;
-    padding: 24px;
-    border-radius: 12px;
-    background: rgba(0, 0, 0, 0.05);
-    margin-bottom: 20px;
-    
-    &.positive .value { color: var(--success-color); }
-    &.negative .value { color: var(--error-color); }
     
     .label {
       display: block;
-      font-size: 14px;
+      font-size: 12px;
       color: var(--text-secondary);
-      margin-bottom: 8px;
+      margin-bottom: 4px;
     }
     
     .value {
-      font-size: 36px;
-      font-weight: bold;
-    }
-  }
-  
-  .ball-stats {
-    display: flex;
-    justify-content: space-around;
-    
-    .ball-item {
-      text-align: center;
+      font-size: 24px;
+      font-weight: 700;
       
-      .label {
-        display: block;
-        font-size: 12px;
-        color: var(--text-secondary);
-        margin-bottom: 4px;
-      }
-      
-      .value {
-        font-size: 20px;
-        font-weight: bold;
-        
-        &.positive { color: var(--success-color); }
-        &.negative { color: var(--error-color); }
-      }
+      &.positive { color: var(--success-color); }
+      &.negative { color: var(--error-color); }
     }
   }
 }
 
-.opponents-section {
-  .opponents-chart {
-    height: 200px;
-    margin-bottom: 16px;
-  }
-  
-  .opponents-list {
-    .opponent-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 0;
-      border-bottom: 1px solid var(--border-color);
-      
-      &:last-child {
-        border-bottom: none;
-      }
-      
+// 对手分析
+.opponents-chart {
+  height: 200px;
+  margin-bottom: 16px;
+}
+
+.opponents-list {
+  .opponent-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border-color);
+    
+    &:last-child {
+      border-bottom: none;
+    }
+    
+    .opponent-info {
       .opponent-name {
-        font-weight: bold;
+        font-weight: 600;
+        color: var(--text-color);
+        margin-bottom: 2px;
       }
       
       .opponent-record {
+        font-size: 13px;
         color: var(--text-secondary);
-        font-size: 14px;
-      }
-      
-      .opponent-profit {
-        font-weight: bold;
         
-        &.positive { color: var(--success-color); }
-        &.negative { color: var(--error-color); }
+        .wins { color: var(--success-color); margin-right: 8px; }
+        .losses { color: var(--error-color); margin-right: 8px; }
       }
+    }
+    
+    .opponent-profit {
+      font-size: 18px;
+      font-weight: 700;
+      
+      &.positive { color: var(--success-color); }
+      &.negative { color: var(--error-color); }
     }
   }
 }
 
-.trend-section {
-  .trend-chart {
-    height: 250px;
-  }
+// 走势图
+.trend-chart {
+  height: 250px;
 }
 
-.recent-section {
-  .recent-list {
-    .recent-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 0;
-      border-bottom: 1px solid var(--border-color);
-      
-      &:last-child {
-        border-bottom: none;
+// 最近比赛
+.recent-list {
+  .recent-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border-color);
+    
+    &:last-child {
+      border-bottom: none;
+    }
+    
+    .match-info {
+      .opponent {
+        display: block;
+        font-weight: 600;
+        color: var(--text-color);
       }
       
-      .match-info {
-        .opponent {
-          display: block;
-          font-weight: bold;
-        }
-        
-        .date {
-          font-size: 12px;
-          color: var(--text-secondary);
-        }
+      .date {
+        font-size: 12px;
+        color: var(--text-secondary);
       }
+    }
+    
+    .match-result {
+      font-size: 16px;
+      font-weight: 700;
       
-      .match-result {
-        font-weight: bold;
-        
-        &.win { color: var(--success-color); }
-        &.lose { color: var(--error-color); }
-        &.draw { color: var(--text-secondary); }
-      }
+      &.win { color: var(--success-color); }
+      &.lose { color: var(--error-color); }
+      &.draw { color: var(--text-secondary); }
     }
   }
 }
 
+.empty-tip {
+  text-align: center;
+  padding: 30px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+// 响应式
 @media (max-width: 768px) {
   .stats-overview {
     grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .profit-display .value {
+    font-size: 32px;
   }
 }
 </style>

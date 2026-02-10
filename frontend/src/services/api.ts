@@ -51,6 +51,11 @@ export const roomApi = {
   // 结算房间
   settle(roomId: string): Promise<MatchRecord> {
     return api.post(`/rooms/${roomId}/settle`).then(res => res.data)
+  },
+
+  // 获取进行中的房间
+  getActiveRooms(): Promise<{ roomId: string; players: string[]; roundCount: number }[]> {
+    return api.get('/rooms/active').then(res => res.data)
   }
 }
 

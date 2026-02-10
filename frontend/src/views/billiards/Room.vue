@@ -6,9 +6,9 @@
         <t-icon name="chevron-left" /> 返回
       </t-button>
       <div class="room-info">
-        <span class="room-id">房间号: {{ roomId }}</span>
+        <span class="room-id">房间 {{ roomId }}</span>
         <t-tag :theme="connected ? 'success' : 'danger'" size="small">
-          {{ connected ? '已连接' : '断开连接' }}
+          {{ connected ? '已连接' : '断开' }}
         </t-tag>
       </div>
       <div class="header-actions">
@@ -26,7 +26,7 @@
       </div>
     </header>
 
-    <!-- 全屏模式下的退出按钮 -->
+    <!-- 全屏模式退出按钮 -->
     <t-button 
       v-show="isFullscreen" 
       class="exit-fullscreen-btn"
@@ -37,29 +37,9 @@
     </t-button>
 
     <!-- 主记分板 -->
-    <main class="scoreboard">
-      <!-- 玩家1 -->
-      <div 
-        class="player-section player-1"
-        :class="{ winner: isWinner(players[0]?.name), selectable: canOperate && showRoundInput }"
-        @click="canOperate && showRoundInput && selectWinner(players[0]?.name)"
-      >
-        <div class="player-avatar">{{ players[0]?.name?.[0] || '?' }}</div>
-        <div class="player-name">{{ players[0]?.name || '玩家1' }}</div>
-        <div class="player-stats">
-          <div class="stat-item">
-            <span class="stat-value">{{ getPlayerWins(players[0]?.name) }}</span>
-            <span class="stat-label">局</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-value">{{ getPlayerBalls(players[0]?.name) }}</span>
-            <span class="stat-label">球</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- 中间比分 -->
-      <div class="score-center">
+    <main class="scoreboard" :class="{ 'multi-player': players.length > 2 }">
+      <!-- 中间大比分（2人模式） -->
+      <div class="score-center" v-if="players.length === 2">
         <div class="score-display large">
           {{ getPlayerWins(players[0]?.name) }} : {{ getPlayerWins(players[1]?.name) }}
         </div>
@@ -69,22 +49,35 @@
         </div>
       </div>
 
-      <!-- 玩家2 -->
-      <div 
-        class="player-section player-2"
-        :class="{ winner: isWinner(players[1]?.name), selectable: canOperate && showRoundInput }"
-        @click="canOperate && showRoundInput && selectWinner(players[1]?.name)"
-      >
-        <div class="player-avatar">{{ players[1]?.name?.[0] || '?' }}</div>
-        <div class="player-name">{{ players[1]?.name || '玩家2' }}</div>
-        <div class="player-stats">
-          <div class="stat-item">
-            <span class="stat-value">{{ getPlayerWins(players[1]?.name) }}</span>
-            <span class="stat-label">局</span>
+      <!-- 多人模式标题 -->
+      <div class="multi-header" v-else>
+        <div class="round-info-large">第 {{ rounds.length + 1 }} 局</div>
+      </div>
+
+      <!-- 玩家区块 -->
+      <div class="players-grid" :class="`players-${players.length}`">
+        <div 
+          v-for="(player, index) in players"
+          :key="player.name"
+          class="player-card"
+          :class="{ 
+            'winner-selected': isWinner(player.name), 
+            'selectable': canOperate && showRoundInput,
+            [`player-theme-${index + 1}`]: true
+          }"
+          @click="canOperate && showRoundInput && selectWinner(player.name)"
+        >
+          <div class="player-avatar" :class="`player-${index + 1}`">
+            {{ player.name?.[0] || '?' }}
           </div>
-          <div class="stat-item">
-            <span class="stat-value">{{ getPlayerBalls(players[1]?.name) }}</span>
-            <span class="stat-label">球</span>
+          <div class="player-name">{{ player.name || '玩家' }}</div>
+          <div class="player-score">
+            <div class="score-big">{{ getPlayerWins(player.name) }}</div>
+            <div class="score-label">局</div>
+          </div>
+          <div class="player-balls">
+            <span class="balls-value">{{ getPlayerBalls(player.name) }}</span>
+            <span class="balls-label">球</span>
           </div>
         </div>
       </div>
@@ -122,7 +115,7 @@
       </template>
       
       <div v-else class="spectator-tip">
-        👁 观战中 - 只有房主或授权者可操作
+        观战中 - 只有房主或授权者可操作
       </div>
     </footer>
 
@@ -138,20 +131,22 @@
       header="记录本局"
       :footer="false"
       width="90%"
-      :style="{ maxWidth: '400px' }"
+      :style="{ maxWidth: '450px' }"
     >
       <div class="round-input-panel">
         <div class="winner-select">
           <div class="label">本局胜者</div>
-          <div class="winner-options">
+          <div class="winner-options" :class="`options-${players.length}`">
             <div 
-              v-for="player in players" 
+              v-for="(player, index) in players" 
               :key="player.name"
               class="winner-option"
               :class="{ selected: roundInput.winner === player.name }"
               @click="roundInput.winner = player.name"
             >
-              <div class="player-avatar small">{{ player.name[0] }}</div>
+              <div class="player-avatar small" :class="`player-${index + 1}`">
+                {{ player.name[0] }}
+              </div>
               <span>{{ player.name }}</span>
             </div>
           </div>
@@ -238,7 +233,7 @@
       </div>
     </t-dialog>
 
-    <!-- 权限管理（仅房主可见） -->
+    <!-- 权限管理 -->
     <t-drawer
       v-model:visible="showOperators"
       header="权限管理"
@@ -297,7 +292,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { useRoomStore } from '@/stores/room'
@@ -475,7 +470,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   
   .room-info {
     display: flex;
@@ -483,8 +478,9 @@ onUnmounted(() => {
     gap: 8px;
     
     .room-id {
-      font-weight: bold;
+      font-weight: 600;
       color: var(--text-color);
+      font-size: 14px;
     }
   }
   
@@ -499,101 +495,43 @@ onUnmounted(() => {
   top: 20px;
   right: 20px;
   z-index: 100;
+  background: var(--card-bg) !important;
+  backdrop-filter: blur(10px);
 }
 
+// 主记分板
 .scoreboard {
-  flex: 1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
-  padding: 40px 20px;
-}
-
-.player-section {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  padding: 30px;
-  border-radius: 20px;
-  background: var(--card-bg);
-  transition: all 0.3s;
-  
-  &.selectable {
-    cursor: pointer;
-    
-    &:hover {
-      transform: scale(1.02);
-    }
-  }
-  
-  &.winner {
-    box-shadow: 0 0 0 4px var(--primary-color);
-  }
-  
-  .player-avatar {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 36px;
-    font-weight: bold;
-    color: white;
-  }
-  
-  &.player-1 .player-avatar {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-  }
-  
-  &.player-2 .player-avatar {
-    background: linear-gradient(135deg, #f093fb, #f5576c);
-  }
-  
-  .player-name {
-    font-size: 24px;
-    font-weight: bold;
-    color: var(--text-color);
-  }
-  
-  .player-stats {
-    display: flex;
-    gap: 30px;
-    
-    .stat-item {
-      text-align: center;
-      
-      .stat-value {
-        display: block;
-        font-size: 36px;
-        font-weight: bold;
-        color: var(--text-color);
-      }
-      
-      .stat-label {
-        font-size: 14px;
-        color: var(--text-secondary);
-      }
-    }
-  }
+  justify-content: center;
+  gap: 30px;
+  padding: 20px;
 }
 
+// 中心比分（2人模式）
 .score-center {
   text-align: center;
   
   .score-display {
-    font-size: 48px;
-    font-weight: bold;
+    font-size: 72px;
+    font-weight: 800;
     color: var(--text-color);
+    text-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+    letter-spacing: 8px;
+    line-height: 1;
+    margin-bottom: 12px;
+    
+    &.large {
+      font-size: 88px;
+    }
   }
   
   .round-info {
     font-size: 16px;
     color: var(--text-secondary);
-    margin: 8px 0;
+    margin-bottom: 4px;
   }
   
   .ball-diff {
@@ -602,6 +540,137 @@ onUnmounted(() => {
   }
 }
 
+// 多人模式标题
+.multi-header {
+  text-align: center;
+  
+  .round-info-large {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text-color);
+  }
+}
+
+// 玩家网格
+.players-grid {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  width: 100%;
+  max-width: 800px;
+  
+  &.players-2 {
+    .player-card {
+      flex: 1;
+      max-width: 300px;
+    }
+  }
+  
+  &.players-3, &.players-4 {
+    flex-wrap: wrap;
+    
+    .player-card {
+      width: calc(50% - 10px);
+      max-width: 200px;
+    }
+  }
+}
+
+// 玩家卡片
+.player-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 20px;
+  border-radius: 20px;
+  background: var(--card-bg);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  
+  &.selectable {
+    cursor: pointer;
+    
+    &:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+    }
+  }
+  
+  &.winner-selected {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 30px var(--primary-light), 0 8px 32px rgba(0, 0, 0, 0.2);
+  }
+  
+  .player-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: bold;
+    color: white;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    
+    &.player-1 { background: linear-gradient(135deg, #667eea, #764ba2); }
+    &.player-2 { background: linear-gradient(135deg, #f093fb, #f5576c); }
+    &.player-3 { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+    &.player-4 { background: linear-gradient(135deg, #fa709a, #fee140); }
+  }
+  
+  .player-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .player-score {
+    text-align: center;
+    
+    .score-big {
+      font-size: 48px;
+      font-weight: 800;
+      color: var(--text-color);
+      line-height: 1;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+    
+    .score-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+  }
+  
+  .player-balls {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    padding: 6px 16px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.08);
+    
+    .balls-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-color);
+    }
+    
+    .balls-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+  }
+}
+
+// 操作区
 .actions {
   display: flex;
   justify-content: center;
@@ -611,7 +680,11 @@ onUnmounted(() => {
   
   .spectator-tip {
     color: var(--text-secondary);
-    font-size: 16px;
+    font-size: 14px;
+    padding: 12px 24px;
+    background: var(--card-bg);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
   }
 }
 
@@ -625,6 +698,7 @@ onUnmounted(() => {
   }
 }
 
+// 记录弹窗
 .round-input-panel {
   .label {
     font-size: 14px;
@@ -634,34 +708,49 @@ onUnmounted(() => {
   
   .winner-options {
     display: flex;
-    gap: 16px;
+    gap: 12px;
     margin-bottom: 24px;
+    flex-wrap: wrap;
+    
+    &.options-3, &.options-4 {
+      .winner-option {
+        width: calc(50% - 6px);
+      }
+    }
     
     .winner-option {
       flex: 1;
+      min-width: 80px;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 8px;
-      padding: 16px;
+      padding: 16px 12px;
       border-radius: 12px;
       border: 2px solid var(--border-color);
       cursor: pointer;
       transition: all 0.2s;
+      background: rgba(255, 255, 255, 0.03);
       
       &:hover {
         border-color: var(--primary-color);
+        background: rgba(255, 255, 255, 0.06);
       }
       
       &.selected {
         border-color: var(--primary-color);
-        background: rgba(26, 93, 26, 0.1);
+        background: var(--primary-light);
       }
       
       .player-avatar.small {
-        width: 50px;
-        height: 50px;
-        font-size: 20px;
+        width: 44px;
+        height: 44px;
+        font-size: 18px;
+      }
+      
+      span {
+        font-size: 14px;
+        color: var(--text-color);
       }
     }
   }
@@ -684,15 +773,17 @@ onUnmounted(() => {
   }
 }
 
+// 结算预览
 .settle-preview {
   text-align: center;
   
   .final-score {
-    font-size: 24px;
+    font-size: 20px;
     margin-bottom: 16px;
     
     strong {
       color: var(--primary-color);
+      font-size: 28px;
     }
   }
   
@@ -703,11 +794,14 @@ onUnmounted(() => {
   
   .money-result {
     font-size: 18px;
+    padding: 16px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
     
-    .loser { color: var(--error-color); }
-    .winner { color: var(--success-color); }
+    .loser { color: var(--error-color); font-weight: 600; }
+    .winner { color: var(--success-color); font-weight: 600; }
     .amount { 
-      font-size: 24px;
+      font-size: 28px;
       font-weight: bold;
       color: var(--warning-color);
     }
@@ -719,6 +813,7 @@ onUnmounted(() => {
   }
 }
 
+// 分享内容
 .share-content {
   display: flex;
   flex-direction: column;
@@ -728,10 +823,11 @@ onUnmounted(() => {
     text-align: center;
     
     .room-id-display {
-      font-size: 36px;
+      font-size: 40px;
       font-weight: bold;
-      letter-spacing: 4px;
+      letter-spacing: 8px;
       margin-bottom: 12px;
+      color: var(--text-color);
     }
   }
   
@@ -741,6 +837,7 @@ onUnmounted(() => {
   }
 }
 
+// 权限面板
 .operators-panel {
   .section {
     margin-bottom: 24px;
@@ -771,32 +868,36 @@ onUnmounted(() => {
   position: fixed;
   bottom: 100px;
   right: 20px;
+  background: var(--card-bg) !important;
+  backdrop-filter: blur(10px);
 }
 
 // 全屏模式
 .fullscreen-mode {
   .scoreboard {
     height: 100vh;
-    padding: 60px 40px;
+    padding: 40px;
   }
   
   .score-center .score-display {
-    font-size: 72px;
+    font-size: 120px;
+    
+    &.large {
+      font-size: 140px;
+    }
   }
   
-  .player-section {
-    .player-avatar {
-      width: 120px;
-      height: 120px;
-      font-size: 48px;
-    }
+  .player-card {
+    padding: 32px 28px;
     
-    .player-name {
+    .player-avatar {
+      width: 72px;
+      height: 72px;
       font-size: 32px;
     }
     
-    .player-stats .stat-item .stat-value {
-      font-size: 48px;
+    .player-score .score-big {
+      font-size: 64px;
     }
   }
 }
@@ -804,31 +905,57 @@ onUnmounted(() => {
 // 响应式
 @media (max-width: 768px) {
   .scoreboard {
-    flex-direction: column;
-    padding: 20px 10px;
+    padding: 10px;
+    gap: 20px;
   }
   
-  .player-section {
-    width: 100%;
-    padding: 20px;
+  .score-center .score-display {
+    font-size: 56px;
     
-    .player-stats {
-      gap: 40px;
+    &.large {
+      font-size: 64px;
     }
   }
   
-  .score-center {
-    order: -1;
-    margin-bottom: 20px;
+  .players-grid {
+    flex-direction: column;
+    align-items: center;
+    
+    &.players-2 .player-card {
+      width: 100%;
+      max-width: none;
+      flex-direction: row;
+      justify-content: space-between;
+      padding: 16px 20px;
+      
+      .player-score {
+        display: flex;
+        align-items: baseline;
+        gap: 4px;
+        
+        .score-big {
+          font-size: 36px;
+        }
+      }
+    }
+    
+    &.players-3, &.players-4 {
+      flex-direction: row;
+      
+      .player-card {
+        width: calc(50% - 8px);
+        padding: 16px;
+        
+        .player-score .score-big {
+          font-size: 32px;
+        }
+      }
+    }
   }
   
   .fullscreen-mode {
-    .scoreboard {
-      padding: 20px;
-    }
-    
     .score-center .score-display {
-      font-size: 56px;
+      font-size: 72px;
     }
   }
 }
