@@ -119,6 +119,13 @@
                 <t-input-number v-model="formData.pricePerBall" :min="0" :max="1000" />
               </t-form-item>
               
+              <t-form-item label="默认比分展示">
+                <t-radio-group v-model="formData.defaultScoreMode">
+                  <t-radio value="rounds">对局比分</t-radio>
+                  <t-radio value="balls">球数比</t-radio>
+                </t-radio-group>
+              </t-form-item>
+              
               <t-form-item label="你是谁">
                 <t-select v-model="formData.currentUser" :options="currentUserOptions" />
               </t-form-item>
@@ -212,6 +219,56 @@
         </t-collapse-transition>
       </div>
     </main>
+
+    <!-- 进入比赛身份选择弹窗 -->
+    <t-dialog
+      v-model:visible="showJoinDialog"
+      header="选择身份进入比赛"
+      :footer="false"
+      width="90%"
+      :style="{ maxWidth: '400px' }"
+    >
+      <div class="join-dialog-content" v-if="selectedRoom">
+        <div class="room-preview">
+          <div class="match-players">
+            <span v-for="(p, i) in selectedRoom.players" :key="p">
+              {{ p }}{{ i < selectedRoom.players.length - 1 ? ' vs ' : '' }}
+            </span>
+          </div>
+          <div class="match-info">房间号: {{ selectedRoom.roomId }}</div>
+        </div>
+        
+        <div class="identity-options">
+          <div 
+            class="identity-option spectator"
+            @click="joinAsSpectator"
+          >
+            <t-icon name="browse" />
+            <span>游客观战</span>
+            <small>只能查看比赛进程</small>
+          </div>
+          
+          <div class="identity-option player-option">
+            <div class="option-header">
+              <t-icon name="user" />
+              <span>我是参赛人员</span>
+            </div>
+            <div class="player-buttons">
+              <t-button 
+                v-for="(player, index) in selectedRoom.players" 
+                :key="player"
+                :theme="index % 2 === 0 ? 'primary' : 'danger'"
+                size="large"
+                block
+                @click="joinAsPlayer(player)"
+              >
+                {{ player }}
+              </t-button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </t-dialog>
   </div>
 </template>
 
@@ -234,7 +291,8 @@ const formData = ref({
   gameType: 'eight-ball',
   players: ['阿兴', '老爸'],
   pricePerBall: 5,
-  currentUser: '阿兴'
+  currentUser: '阿兴',
+  defaultScoreMode: 'rounds'  // 默认显示对局比分
 })
 
 const joinInput = ref('')  // 支持房间号或链接
@@ -242,6 +300,10 @@ const joinUserName = ref(localStorage.getItem('userName') || '')
 
 const allPlayersWithStats = ref<{ name: string; matchCount: number }[]>([])
 const activeRooms = ref<{ roomId: string; players: string[]; roundCount: number }[]>([])
+
+// 身份选择弹窗
+const showJoinDialog = ref(false)
+const selectedRoom = ref<{ roomId: string; players: string[] } | null>(null)
 
 const gameTypeOptions = GAME_TYPES.map(t => ({ label: t.label, value: t.value }))
 
@@ -339,7 +401,8 @@ async function handleCreate() {
         name, 
         isPreset: isPreset(name) 
       })),
-      pricePerBall: formData.value.pricePerBall
+      pricePerBall: formData.value.pricePerBall,
+      defaultScoreMode: formData.value.defaultScoreMode
     })
     
     roomStore.setCurrentUser(formData.value.currentUser)
@@ -370,19 +433,40 @@ async function handleJoin() {
   }
 }
 
-async function quickJoin(room: { roomId: string }) {
-  const userName = formData.value.currentUser || localStorage.getItem('userName')
-  if (!userName) {
-    MessagePlugin.warning('请先选择你的身份')
-    return
-  }
+async function quickJoin(room: { roomId: string; players: string[] }) {
+  // 打开身份选择弹窗
+  selectedRoom.value = room
+  showJoinDialog.value = true
+}
+
+// 以游客身份进入
+async function joinAsSpectator() {
+  if (!selectedRoom.value) return
+  
+  const guestName = `游客${Math.floor(Math.random() * 1000)}`
   
   try {
-    await roomApi.join(room.roomId, userName)
-    roomStore.setCurrentUser(userName)
-    router.push(`/billiards/room/${room.roomId}`)
+    await roomApi.join(selectedRoom.value.roomId, guestName)
+    roomStore.setCurrentUser(guestName)
+    showJoinDialog.value = false
+    router.push(`/billiards/room/${selectedRoom.value.roomId}`)
   } catch (e: any) {
-    MessagePlugin.error(e.response?.data?.detail || '加入房间失败')
+    MessagePlugin.error(e.response?.data?.detail || '进入房间失败')
+  }
+}
+
+// 以参赛人员身份进入
+async function joinAsPlayer(playerName: string) {
+  if (!selectedRoom.value) return
+  
+  try {
+    await roomApi.join(selectedRoom.value.roomId, playerName)
+    roomStore.setCurrentUser(playerName)
+    localStorage.setItem('userName', playerName)
+    showJoinDialog.value = false
+    router.push(`/billiards/room/${selectedRoom.value.roomId}`)
+  } catch (e: any) {
+    MessagePlugin.error(e.response?.data?.detail || '进入房间失败')
   }
 }
 
@@ -670,6 +754,95 @@ onMounted(() => {
   padding: 24px;
   color: var(--text-secondary);
   font-size: 14px;
+}
+
+// 身份选择弹窗
+.join-dialog-content {
+  .room-preview {
+    text-align: center;
+    padding: 16px;
+    margin-bottom: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    
+    .match-players {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-color);
+      margin-bottom: 8px;
+    }
+    
+    .match-info {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+  }
+  
+  .identity-options {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .identity-option {
+    padding: 16px;
+    border-radius: 12px;
+    border: 2px solid var(--border-color);
+    transition: all 0.3s;
+    
+    &.spectator {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      
+      &:hover {
+        border-color: var(--primary-color);
+        background: rgba(255, 255, 255, 0.05);
+      }
+      
+      .t-icon {
+        font-size: 24px;
+        color: #60a5fa;
+      }
+      
+      span {
+        font-weight: 600;
+        color: var(--text-color);
+      }
+      
+      small {
+        margin-left: auto;
+        color: var(--text-secondary);
+        font-size: 12px;
+      }
+    }
+    
+    &.player-option {
+      .option-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+        
+        .t-icon {
+          font-size: 24px;
+          color: var(--success-color);
+        }
+        
+        span {
+          font-weight: 600;
+          color: var(--text-color);
+        }
+      }
+      
+      .player-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+    }
+  }
 }
 
 // 响应式

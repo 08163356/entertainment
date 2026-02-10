@@ -21,6 +21,7 @@ class RoomCreate(BaseModel):
     owner: str
     players: List[PlayerCreate]
     pricePerBall: float = 5.0
+    defaultScoreMode: str = "rounds"  # "rounds" 或 "balls"
 
 class RoomJoin(BaseModel):
     userName: str
@@ -43,6 +44,7 @@ class RoomResponse(BaseModel):
     pricePerBall: float
     status: str
     createdAt: str
+    defaultScoreMode: str = "rounds"  # 默认比分显示模式
 
 class TransferDetail(BaseModel):
     """转账详情"""
@@ -72,6 +74,7 @@ class MatchResponse(BaseModel):
     createdAt: str
     settledAt: str
     transfers: Optional[List[TransferDetail]] = None  # 多人模式转账详情
+    isZeroMatch: Optional[bool] = False  # 是否为0:0比赛
 
 class MatchListResponse(BaseModel):
     total: int

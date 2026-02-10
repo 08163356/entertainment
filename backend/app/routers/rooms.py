@@ -72,7 +72,8 @@ async def create_room(data: RoomCreate, db: AsyncSession = Depends(get_db)):
         game_type=data.gameType,
         owner=data.owner,
         players=data.players,
-        price_per_ball=data.pricePerBall
+        price_per_ball=data.pricePerBall,
+        default_score_mode=data.defaultScoreMode
     )
     
     return {"roomId": room_id}
@@ -236,7 +237,9 @@ async def settle_room(room_id: str, db: AsyncSession = Depends(get_db)):
     
     # 检查是否所有玩家都是0球（0:0 不计入数据库）
     total_balls = sum(ps["balls"] for ps in player_stats.values())
-    if total_balls == 0:
+    is_zero_match = total_balls == 0
+    
+    if is_zero_match:
         # 删除数据库中的比赛记录
         match_id = room_manager.get_match_id(room_id)
         result = await db.execute(select(Match).where(Match.id == match_id))
@@ -248,7 +251,26 @@ async def settle_room(room_id: str, db: AsyncSession = Depends(get_db)):
         # 关闭房间
         room_manager.settle_room(room_id)
         
-        raise HTTPException(status_code=400, detail="0:0 比赛不计入战绩，已取消记录")
+        # 广播结算（0:0 比赛）
+        await room_manager.broadcast(room_id, {
+            "type": "room_settled",
+            "data": room_manager.get_room(room_id),
+            "isZeroMatch": True
+        })
+        
+        # 返回空结算数据，而不是抛异常
+        return MatchResponse(
+            id="",
+            roomId=room_id,
+            gameType=room["gameType"],
+            players=[p["name"] for p in players],
+            rounds=[],
+            settlement=SettlementResponse(score="0:0", winner=None, loser=None, ballDiff=0, amount=0),
+            createdAt=room["createdAt"],
+            settledAt=datetime.utcnow().isoformat(),
+            transfers=[],
+            isZeroMatch=True
+        )
     
     # 计算结算（多人模式：按球数排序计算转账）
     price_per_ball = room["pricePerBall"]

@@ -40,12 +40,49 @@
     <main class="scoreboard" :class="{ 'multi-player': players.length > 2 }">
       <!-- 中间大比分（2人模式） -->
       <div class="score-center" v-if="players.length === 2">
-        <div class="score-display large">
-          {{ getPlayerWins(players[0]?.name) }} : {{ getPlayerWins(players[1]?.name) }}
+        <!-- 比分切换按钮 -->
+        <div class="score-mode-switch">
+          <t-button 
+            :theme="scoreMode === 'rounds' ? 'primary' : 'default'"
+            size="small"
+            variant="outline"
+            @click="scoreMode = 'rounds'"
+          >
+            对局
+          </t-button>
+          <t-button 
+            :theme="scoreMode === 'balls' ? 'primary' : 'default'"
+            size="small"
+            variant="outline"
+            @click="scoreMode = 'balls'"
+          >
+            球数
+          </t-button>
         </div>
+        
+        <!-- 大比分显示 -->
+        <div class="score-display-container">
+          <div class="score-display large" :class="scoreMode">
+            <span class="score-p1">{{ scoreMode === 'rounds' ? getPlayerWins(players[0]?.name) : getPlayerBalls(players[0]?.name) }}</span>
+            <span class="score-divider">:</span>
+            <span class="score-p2">{{ scoreMode === 'rounds' ? getPlayerWins(players[1]?.name) : getPlayerBalls(players[1]?.name) }}</span>
+          </div>
+          <div class="score-type-label">
+            {{ scoreMode === 'rounds' ? '对局比分' : '球数比' }}
+          </div>
+        </div>
+        
         <div class="round-info">第 {{ rounds.length + 1 }} 局</div>
-        <div class="ball-diff">
-          球数差: {{ Math.abs(getPlayerBalls(players[0]?.name) - getPlayerBalls(players[1]?.name)) }}
+        
+        <!-- 副比分显示（显示另一种模式） -->
+        <div class="sub-score" @click="toggleScoreMode">
+          <span v-if="scoreMode === 'rounds'">
+            球数: {{ getPlayerBalls(players[0]?.name) }} - {{ getPlayerBalls(players[1]?.name) }}
+          </span>
+          <span v-else>
+            对局: {{ getPlayerWins(players[0]?.name) }} - {{ getPlayerWins(players[1]?.name) }}
+          </span>
+          <t-icon name="swap" size="14px" />
         </div>
       </div>
 
@@ -336,6 +373,13 @@ const canOperate = computed(() => roomStore.canOperate)
 const players = computed(() => roomStore.players)
 const rounds = computed(() => roomStore.rounds)
 
+// 比分显示模式（对局/球数）
+const scoreMode = ref<'rounds' | 'balls'>('rounds')
+
+function toggleScoreMode() {
+  scoreMode.value = scoreMode.value === 'rounds' ? 'balls' : 'rounds'
+}
+
 // 计算结算预览（支持多人模式）
 const settlementPreview = computed(() => {
   if (!room.value || players.value.length < 2) return null
@@ -454,9 +498,16 @@ async function handleUndo() {
 
 async function handleSettle() {
   try {
-    await roomApi.settle(roomId.value)
+    const result = await roomApi.settle(roomId.value)
     showSettleConfirm.value = false
-    MessagePlugin.success('结算完成')
+    
+    // 检查是否是 0:0 比赛
+    if (result.isZeroMatch) {
+      MessagePlugin.info('0:0 比赛不计入战绩，已返回')
+      router.push('/billiards')
+    } else {
+      MessagePlugin.success('结算完成')
+    }
   } catch (e: any) {
     MessagePlugin.error(e.response?.data?.detail || '结算失败')
   }
@@ -514,6 +565,12 @@ onMounted(async () => {
   try {
     const roomData = await roomApi.get(roomId.value)
     roomStore.setRoom(roomData)
+    
+    // 设置默认比分显示模式
+    if (roomData.defaultScoreMode) {
+      scoreMode.value = roomData.defaultScoreMode as 'rounds' | 'balls'
+    }
+    
     wsService.connect(roomId.value, userName)
   } catch (e: any) {
     MessagePlugin.error('房间不存在或已关闭')
@@ -584,29 +641,93 @@ onUnmounted(() => {
 .score-center {
   text-align: center;
   
+  .score-mode-switch {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  
+  .score-display-container {
+    margin-bottom: 16px;
+  }
+  
   .score-display {
-    font-size: 72px;
     font-weight: 800;
-    color: var(--text-color);
     text-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
-    letter-spacing: 8px;
+    letter-spacing: 12px;
     line-height: 1;
-    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
     
     &.large {
-      font-size: 88px;
+      font-size: 100px;
     }
+    
+    // 对局比分颜色
+    &.rounds {
+      .score-p1 {
+        color: #667eea;
+        text-shadow: 0 4px 20px rgba(102, 126, 234, 0.5);
+      }
+      .score-p2 {
+        color: #f5576c;
+        text-shadow: 0 4px 20px rgba(245, 87, 108, 0.5);
+      }
+      .score-divider {
+        color: var(--text-color);
+      }
+    }
+    
+    // 球数比颜色
+    &.balls {
+      .score-p1 {
+        color: #52c41a;
+        text-shadow: 0 4px 20px rgba(82, 196, 26, 0.5);
+      }
+      .score-p2 {
+        color: #faad14;
+        text-shadow: 0 4px 20px rgba(250, 173, 20, 0.5);
+      }
+      .score-divider {
+        color: var(--text-color);
+      }
+    }
+  }
+  
+  .score-type-label {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-top: 8px;
   }
   
   .round-info {
     font-size: 16px;
     color: var(--text-secondary);
-    margin-bottom: 4px;
+    margin-bottom: 8px;
   }
   
-  .ball-diff {
+  .sub-score {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     font-size: 14px;
     color: var(--text-secondary);
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .t-icon {
+      opacity: 0.6;
+    }
   }
 }
 
@@ -1036,10 +1157,8 @@ onUnmounted(() => {
   }
   
   .score-center .score-display {
-    font-size: 120px;
-    
     &.large {
-      font-size: 140px;
+      font-size: 160px;
     }
   }
   
@@ -1066,10 +1185,11 @@ onUnmounted(() => {
   }
   
   .score-center .score-display {
-    font-size: 56px;
+    font-size: 64px;
+    letter-spacing: 8px;
     
     &.large {
-      font-size: 64px;
+      font-size: 72px;
     }
   }
   
@@ -1111,7 +1231,11 @@ onUnmounted(() => {
   
   .fullscreen-mode {
     .score-center .score-display {
-      font-size: 72px;
+      font-size: 80px;
+      
+      &.large {
+        font-size: 96px;
+      }
     }
   }
 }

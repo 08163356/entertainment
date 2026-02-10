@@ -21,7 +21,8 @@ class RoomManager:
         game_type: str,
         owner: str, 
         players: List[dict],
-        price_per_ball: float
+        price_per_ball: float,
+        default_score_mode: str = "rounds"
     ):
         """创建房间"""
         self.rooms[room_id] = {
@@ -34,7 +35,8 @@ class RoomManager:
             "rounds": [],
             "pricePerBall": price_per_ball,
             "status": "playing",
-            "createdAt": datetime.utcnow().isoformat()
+            "createdAt": datetime.utcnow().isoformat(),
+            "defaultScoreMode": default_score_mode
         }
         self.connections[room_id] = {}
         self.room_match_map[room_id] = match_id
