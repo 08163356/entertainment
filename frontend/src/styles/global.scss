@@ -4,6 +4,9 @@
   box-sizing: border-box;
 }
 
+// ============================================
+// 主题变量定义
+// ============================================
 :root {
   --primary-color: #1a5d1a;
   --primary-light: rgba(26, 93, 26, 0.6);
@@ -19,9 +22,14 @@
   --warning-color: #faad14;
   --error-color: #f5222d;
   --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.3);
+  // 弹框专用变量
+  --dialog-bg: rgba(30, 30, 40, 0.98);
+  --dialog-text: #ffffff;
+  --dialog-border: rgba(255, 255, 255, 0.1);
 }
 
 // 浅色主题
+:root[data-theme="light"],
 [data-theme="light"] {
   --primary-color: #1a5d1a;
   --primary-light: rgba(26, 93, 26, 0.2);
@@ -37,8 +45,12 @@
   --warning-color: #ca8a04;
   --error-color: #dc2626;
   --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.1);
+  --dialog-bg: rgba(255, 255, 255, 0.98);
+  --dialog-text: #1f2937;
+  --dialog-border: rgba(0, 0, 0, 0.1);
 }
 
+:root[data-theme="dark"],
 [data-theme="dark"] {
   --primary-color: #52c41a;
   --primary-light: rgba(82, 196, 26, 0.4);
@@ -46,8 +58,12 @@
   --bg-gradient: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%);
   --card-bg: rgba(255, 255, 255, 0.05);
   --card-border: rgba(255, 255, 255, 0.08);
+  --dialog-bg: rgba(20, 20, 30, 0.98);
+  --dialog-text: #ffffff;
+  --dialog-border: rgba(255, 255, 255, 0.08);
 }
 
+:root[data-theme="billiard-green"],
 [data-theme="billiard-green"] {
   --primary-color: #2dd4bf;
   --primary-light: rgba(45, 212, 191, 0.4);
@@ -55,8 +71,12 @@
   --bg-gradient: linear-gradient(135deg, #022c22 0%, #064e3b 50%, #022c22 100%);
   --card-bg: rgba(255, 255, 255, 0.1);
   --card-border: rgba(255, 255, 255, 0.15);
+  --dialog-bg: rgba(4, 60, 46, 0.98);
+  --dialog-text: #ffffff;
+  --dialog-border: rgba(255, 255, 255, 0.15);
 }
 
+:root[data-theme="royal-blue"],
 [data-theme="royal-blue"] {
   --primary-color: #60a5fa;
   --primary-light: rgba(96, 165, 250, 0.4);
@@ -64,6 +84,9 @@
   --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%);
   --card-bg: rgba(255, 255, 255, 0.08);
   --card-border: rgba(255, 255, 255, 0.12);
+  --dialog-bg: rgba(15, 23, 42, 0.98);
+  --dialog-text: #ffffff;
+  --dialog-border: rgba(255, 255, 255, 0.12);
 }
 
 body {
@@ -80,6 +103,10 @@ body {
   background: transparent;
   min-height: 100vh;
 }
+
+// ============================================
+// 通用样式
+// ============================================
 
 // 毛玻璃卡片
 .glass-card {
@@ -108,7 +135,7 @@ body {
   background: var(--bg-gradient);
 }
 
-// 通用卡片样式（保留兼容）
+// 通用卡片样式
 .card {
   background: var(--card-bg);
   backdrop-filter: var(--glass-blur);
@@ -240,115 +267,188 @@ body {
   }
 }
 
-// TDesign 组件覆盖样式（深色主题）
+// ============================================
+// TDesign 组件覆盖样式（使用 CSS 变量）
+// ============================================
+
+// 输入框
 .t-input, .t-select, .t-input-number {
-  background: rgba(255, 255, 255, 0.08) !important;
-  border-color: rgba(255, 255, 255, 0.15) !important;
+  background: var(--card-bg) !important;
+  border-color: var(--border-color) !important;
   
   .t-input__inner {
     color: var(--text-color) !important;
     background: transparent !important;
+    
+    &::placeholder {
+      color: var(--text-secondary) !important;
+    }
   }
 }
 
+.t-input-number {
+  .t-input-number__decrease,
+  .t-input-number__increase {
+    color: var(--text-color) !important;
+    border-color: var(--border-color) !important;
+  }
+}
+
+// 按钮
 .t-button--variant-text {
   color: var(--text-color) !important;
 }
 
+.t-button--variant-outline {
+  color: var(--text-color) !important;
+  border-color: var(--border-color) !important;
+}
+
+// 表单
 .t-form__label {
   color: var(--text-secondary) !important;
 }
 
-.t-dialog {
-  .t-dialog__header {
-    color: var(--text-color);
-  }
+// Radio 组件
+.t-radio__label {
+  color: var(--text-color) !important;
 }
 
+.t-radio-group .t-radio__label {
+  color: var(--text-color) !important;
+}
+
+// Tag 组件
+.t-tag {
+  background: var(--card-bg) !important;
+  color: var(--text-color) !important;
+  border-color: var(--border-color) !important;
+}
+
+.t-tag--theme-primary {
+  background: var(--primary-light) !important;
+  color: var(--primary-color) !important;
+}
+
+// Badge 组件
+.t-badge .t-badge__inner {
+  background: var(--primary-color) !important;
+}
+
+// 下拉菜单
 .t-popup__content {
-  background: rgba(30, 30, 40, 0.95) !important;
+  background: var(--dialog-bg) !important;
   backdrop-filter: blur(20px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid var(--dialog-border) !important;
 }
 
 .t-select-option {
-  color: var(--text-color) !important;
+  color: var(--dialog-text) !important;
   
   &:hover, &.t-is-hover {
-    background: rgba(255, 255, 255, 0.1) !important;
+    background: rgba(128, 128, 128, 0.15) !important;
   }
   
   &.t-is-selected {
     background: var(--primary-light) !important;
+    color: var(--primary-color) !important;
   }
 }
 
-// 浅色主题 TDesign 组件覆盖
+// Dropdown 下拉菜单
+.t-dropdown__menu {
+  background: var(--dialog-bg) !important;
+  border: 1px solid var(--dialog-border) !important;
+}
+
+.t-dropdown__item {
+  color: var(--dialog-text) !important;
+  
+  &:hover {
+    background: rgba(128, 128, 128, 0.15) !important;
+  }
+}
+
+// ============================================
+// Dialog 弹框样式（关键修复）
+// ============================================
+.t-dialog__ctx {
+  .t-dialog__position {
+    .t-dialog {
+      background: var(--dialog-bg) !important;
+      backdrop-filter: blur(20px) !important;
+      border: 1px solid var(--dialog-border) !important;
+      border-radius: 16px !important;
+      
+      .t-dialog__header {
+        color: var(--dialog-text) !important;
+        border-bottom-color: var(--dialog-border) !important;
+        
+        .t-dialog__header-content {
+          color: var(--dialog-text) !important;
+        }
+      }
+      
+      .t-dialog__body {
+        color: var(--dialog-text) !important;
+      }
+      
+      .t-dialog__footer {
+        border-top-color: var(--dialog-border) !important;
+        
+        .t-button {
+          &:not(.t-button--theme-primary) {
+            color: var(--dialog-text) !important;
+            border-color: var(--dialog-border) !important;
+          }
+        }
+      }
+      
+      // 关闭按钮
+      .t-dialog__close {
+        color: var(--dialog-text) !important;
+      }
+    }
+  }
+}
+
+// ============================================
+// Drawer 抽屉样式
+// ============================================
+.t-drawer__content-wrapper {
+  .t-drawer {
+    background: var(--dialog-bg) !important;
+    
+    .t-drawer__header {
+      color: var(--dialog-text) !important;
+      border-bottom-color: var(--dialog-border) !important;
+    }
+    
+    .t-drawer__body {
+      color: var(--dialog-text) !important;
+    }
+    
+    .t-drawer__close-btn {
+      color: var(--dialog-text) !important;
+    }
+  }
+}
+
+// ============================================
+// 浅色主题特殊处理（滚动条等）
+// ============================================
 [data-theme="light"] {
-  .t-input, .t-select, .t-input-number {
-    background: rgba(0, 0, 0, 0.03) !important;
-    border-color: rgba(0, 0, 0, 0.12) !important;
-    
-    .t-input__inner {
-      color: #1f2937 !important;
-    }
-    
-    &::placeholder {
-      color: rgba(31, 41, 55, 0.5) !important;
-    }
-  }
-  
-  .t-button--variant-text {
-    color: #1f2937 !important;
-  }
-  
-  .t-form__label {
-    color: rgba(31, 41, 55, 0.65) !important;
-  }
-  
-  .t-popup__content {
-    background: rgba(255, 255, 255, 0.98) !important;
-    border: 1px solid rgba(0, 0, 0, 0.1) !important;
-  }
-  
-  .t-select-option {
-    color: #1f2937 !important;
-    
-    &:hover, &.t-is-hover {
-      background: rgba(0, 0, 0, 0.05) !important;
-    }
-    
-    &.t-is-selected {
-      background: rgba(26, 93, 26, 0.15) !important;
-      color: #1a5d1a !important;
-    }
-  }
-  
-  .t-dialog {
-    .t-dialog__header {
-      color: #1f2937;
-    }
-    
-    .t-dialog__body {
-      color: #1f2937;
-    }
-  }
-  
-  .t-tag {
-    background: rgba(0, 0, 0, 0.06);
-    color: #1f2937;
-  }
-  
-  .t-badge .t-badge__inner {
-    background: var(--primary-color);
-  }
-  
-  // 滚动条浅色
   ::-webkit-scrollbar-thumb {
     background: rgba(0, 0, 0, 0.15);
     
     &:hover {
       background: rgba(0, 0, 0, 0.25);
     }
+  }
+  
+  // 浅色主题玻璃卡片 hover
+  .glass-card:hover {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.15);
   }
 }
