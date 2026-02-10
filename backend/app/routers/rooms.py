@@ -220,33 +220,84 @@ async def settle_room(room_id: str, db: AsyncSession = Depends(get_db)):
     if room["status"] == "settled":
         raise HTTPException(status_code=400, detail="比赛已结算")
     
-    # 计算结算结果
+    # 计算结算结果（支持多人）
     players = room["players"]
-    if len(players) != 2:
-        raise HTTPException(status_code=400, detail="玩家数量不正确")
+    player_stats = {}
     
-    p1_name, p2_name = players[0]["name"], players[1]["name"]
-    p1_wins = p1_balls = p2_wins = p2_balls = 0
+    # 初始化每个玩家的统计
+    for p in players:
+        player_stats[p["name"]] = {"wins": 0, "balls": 0}
     
+    # 统计每个玩家的数据
     for r in room["rounds"]:
-        if r["winner"] == p1_name:
-            p1_wins += 1
-            p1_balls += r["ballsWon"]
+        if r["winner"] in player_stats:
+            player_stats[r["winner"]]["wins"] += 1
+            player_stats[r["winner"]]["balls"] += r["ballsWon"]
+    
+    # 检查是否所有玩家都是0球（0:0 不计入数据库）
+    total_balls = sum(ps["balls"] for ps in player_stats.values())
+    if total_balls == 0:
+        # 删除数据库中的比赛记录
+        match_id = room_manager.get_match_id(room_id)
+        result = await db.execute(select(Match).where(Match.id == match_id))
+        db_match = result.scalar_one_or_none()
+        if db_match:
+            await db.delete(db_match)
+            await db.commit()
+        
+        # 关闭房间
+        room_manager.settle_room(room_id)
+        
+        raise HTTPException(status_code=400, detail="0:0 比赛不计入战绩，已取消记录")
+    
+    # 计算结算（多人模式：按球数排序计算转账）
+    price_per_ball = room["pricePerBall"]
+    player_names = [p["name"] for p in players]
+    
+    # 按球数排序
+    sorted_players = sorted(player_stats.items(), key=lambda x: x[1]["balls"], reverse=True)
+    
+    # 计算转账详情（多人模式）
+    transfers = []
+    if len(players) == 2:
+        # 两人模式：简单计算
+        p1_name, p2_name = player_names[0], player_names[1]
+        p1_balls = player_stats[p1_name]["balls"]
+        p2_balls = player_stats[p2_name]["balls"]
+        ball_diff = abs(p1_balls - p2_balls)
+        amount = ball_diff * price_per_ball
+        
+        if p1_balls > p2_balls:
+            winner, loser = p1_name, p2_name
+            transfers.append({"from": p2_name, "to": p1_name, "amount": amount, "ballDiff": ball_diff})
+        elif p2_balls > p1_balls:
+            winner, loser = p2_name, p1_name
+            transfers.append({"from": p1_name, "to": p2_name, "amount": amount, "ballDiff": ball_diff})
         else:
-            p2_wins += 1
-            p2_balls += r["ballsWon"]
-    
-    ball_diff = abs(p1_balls - p2_balls)
-    amount = ball_diff * room["pricePerBall"]
-    
-    if p1_balls > p2_balls:
-        winner, loser = p1_name, p2_name
-    elif p2_balls > p1_balls:
-        winner, loser = p2_name, p1_name
+            winner, loser = None, None
+        
+        score = f"{player_stats[p1_name]['wins']}:{player_stats[p2_name]['wins']}"
     else:
-        winner, loser = None, None
-    
-    score = f"{p1_wins}:{p2_wins}"
+        # 多人模式：每人都要与赢最多的人结算
+        winner_name = sorted_players[0][0]
+        winner_balls = sorted_players[0][1]["balls"]
+        winner = winner_name
+        loser = sorted_players[-1][0]  # 球最少的是输家
+        
+        for name, stats in sorted_players[1:]:  # 跳过第一名
+            ball_diff = winner_balls - stats["balls"]
+            amount = ball_diff * price_per_ball
+            if amount > 0:
+                transfers.append({
+                    "from": name, 
+                    "to": winner_name, 
+                    "amount": amount, 
+                    "ballDiff": ball_diff
+                })
+        
+        score = ":".join([str(player_stats[p["name"]]["wins"]) for p in players])
+        ball_diff = winner_balls - sorted_players[-1][1]["balls"]
+        amount = sum(t["amount"] for t in transfers)
     
     # 更新数据库
     match_id = room_manager.get_match_id(room_id)
@@ -267,30 +318,31 @@ async def settle_room(room_id: str, db: AsyncSession = Depends(get_db)):
     room_manager.settle_room(room_id)
     
     # 构建响应
+    settlement_data = SettlementResponse(
+        score=score,
+        winner=winner,
+        loser=loser,
+        ballDiff=ball_diff,
+        amount=amount
+    )
+    
     match_response = MatchResponse(
         id=match_id,
         roomId=room_id,
         gameType=room["gameType"],
-        players=[p1_name, p2_name],
+        players=player_names,
         rounds=[RoundResponse(**r) for r in room["rounds"]],
-        settlement=SettlementResponse(
-            score=score,
-            winner=winner,
-            loser=loser,
-            ballDiff=ball_diff,
-            amount=amount
-        ),
+        settlement=settlement_data,
         createdAt=room["createdAt"],
-        settledAt=datetime.utcnow().isoformat()
+        settledAt=datetime.utcnow().isoformat(),
+        transfers=transfers  # 添加转账详情
     )
     
     # 广播结算
     await room_manager.broadcast(room_id, {
         "type": "room_settled",
-        "data": room_manager.get_room(room_id)
+        "data": room_manager.get_room(room_id),
+        "transfers": transfers
     })
-    
-    # 清理房间（延迟一段时间后）
-    # room_manager.remove_room(room_id)
     
     return match_response

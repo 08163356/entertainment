@@ -123,12 +123,41 @@
                   :key="match.id"
                   class="recent-item"
                 >
-                  <div class="match-info">
-                    <span class="opponent">vs {{ getOpponent(match) }}</span>
-                    <span class="date">{{ formatDate(match.settledAt) }}</span>
+                  <div class="match-main">
+                    <div class="match-info">
+                      <span class="opponent">vs {{ getOpponent(match) }}</span>
+                      <span class="date">{{ formatDate(match.settledAt) }}</span>
+                    </div>
+                    <div class="match-result" :class="getResultClass(match)">
+                      {{ getResultText(match) }}
+                    </div>
                   </div>
-                  <div class="match-result" :class="getResultClass(match)">
-                    {{ getResultText(match) }}
+                  <!-- 赢球数图标化展示 -->
+                  <div class="balls-visual">
+                    <div class="balls-row player-balls">
+                      <span class="label">我</span>
+                      <div class="balls-icons">
+                        <span 
+                          v-for="n in getMyBalls(match)" 
+                          :key="n" 
+                          class="ball-icon win"
+                        >●</span>
+                        <span v-if="getMyBalls(match) === 0" class="no-balls">-</span>
+                      </div>
+                      <span class="count">{{ getMyBalls(match) }}</span>
+                    </div>
+                    <div class="balls-row opponent-balls">
+                      <span class="label">{{ getOpponent(match)?.[0] }}</span>
+                      <div class="balls-icons">
+                        <span 
+                          v-for="n in getOpponentBalls(match)" 
+                          :key="n" 
+                          class="ball-icon lose"
+                        >●</span>
+                        <span v-if="getOpponentBalls(match) === 0" class="no-balls">-</span>
+                      </div>
+                      <span class="count">{{ getOpponentBalls(match) }}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -351,6 +380,21 @@ function getResultText(match: MatchRecord) {
   return '平'
 }
 
+// 获取我在某场比赛中的赢球数
+function getMyBalls(match: MatchRecord) {
+  return match.rounds
+    .filter(r => r.winner === playerName.value)
+    .reduce((sum, r) => sum + r.ballsWon, 0)
+}
+
+// 获取对手在某场比赛中的赢球数
+function getOpponentBalls(match: MatchRecord) {
+  const opponent = getOpponent(match)
+  return match.rounds
+    .filter(r => r.winner === opponent)
+    .reduce((sum, r) => sum + r.ballsWon, 0)
+}
+
 function formatDate(dateStr: string) {
   const date = new Date(dateStr)
   return date.toLocaleDateString('zh-CN', {
@@ -570,14 +614,18 @@ watch(() => route.params.name, () => {
 // 最近比赛
 .recent-list {
   .recent-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     padding: 14px 0;
     border-bottom: 1px solid var(--border-color);
     
     &:last-child {
       border-bottom: none;
+    }
+    
+    .match-main {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
     }
     
     .match-info {
@@ -600,6 +648,70 @@ watch(() => route.params.name, () => {
       &.win { color: var(--success-color); }
       &.lose { color: var(--error-color); }
       &.draw { color: var(--text-secondary); }
+    }
+    
+    // 赢球数图标展示
+    .balls-visual {
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 10px;
+      padding: 10px 12px;
+      
+      .balls-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        
+        &:first-child {
+          margin-bottom: 6px;
+        }
+        
+        .label {
+          width: 20px;
+          font-size: 12px;
+          color: var(--text-secondary);
+          text-align: center;
+        }
+        
+        .balls-icons {
+          flex: 1;
+          display: flex;
+          gap: 3px;
+          
+          .ball-icon {
+            font-size: 10px;
+            line-height: 1;
+            
+            &.win {
+              color: var(--success-color);
+            }
+            
+            &.lose {
+              color: var(--error-color);
+            }
+          }
+          
+          .no-balls {
+            color: var(--text-secondary);
+            font-size: 12px;
+          }
+        }
+        
+        .count {
+          min-width: 24px;
+          text-align: right;
+          font-size: 14px;
+          font-weight: 600;
+          color: var(--text-color);
+        }
+      }
+      
+      .player-balls .count {
+        color: var(--success-color);
+      }
+      
+      .opponent-balls .count {
+        color: var(--error-color);
+      }
     }
   }
 }

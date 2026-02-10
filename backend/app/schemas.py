@@ -44,6 +44,17 @@ class RoomResponse(BaseModel):
     status: str
     createdAt: str
 
+class TransferDetail(BaseModel):
+    """转账详情"""
+    fromPlayer: str = None  # 使用 fromPlayer 而不是 from（from 是保留字）
+    to: str
+    amount: float
+    ballDiff: int
+
+    class Config:
+        # 允许使用 from 作为别名
+        populate_by_name = True
+
 class SettlementResponse(BaseModel):
     score: str
     winner: Optional[str]
@@ -60,6 +71,7 @@ class MatchResponse(BaseModel):
     settlement: SettlementResponse
     createdAt: str
     settledAt: str
+    transfers: Optional[List[TransferDetail]] = None  # 多人模式转账详情
 
 class MatchListResponse(BaseModel):
     total: int

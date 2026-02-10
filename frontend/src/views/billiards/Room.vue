@@ -194,21 +194,44 @@
       header="确认结算"
       @confirm="handleSettle"
     >
-      <div class="settle-preview" v-if="settlement">
+      <div class="settle-preview" v-if="settlementPreview">
         <div class="final-score">
-          最终比分: <strong>{{ settlement.score }}</strong>
+          最终比分: <strong>{{ settlementPreview.score }}</strong>
         </div>
-        <div class="ball-result">
-          球数: {{ settlement.player1.balls }} vs {{ settlement.player2.balls }}
-          (差 {{ settlement.ballDiff }} 球)
+        
+        <!-- 球数展示 -->
+        <div class="balls-summary">
+          <div 
+            v-for="(stat, index) in settlementPreview.playerStats" 
+            :key="stat.name"
+            class="ball-stat-item"
+          >
+            <div class="player-avatar mini" :class="`player-${index + 1}`">
+              {{ stat.name[0] }}
+            </div>
+            <span class="name">{{ stat.name }}</span>
+            <span class="balls">{{ stat.balls }}球</span>
+          </div>
         </div>
-        <div class="money-result" v-if="settlement.winner">
-          <span class="loser">{{ settlement.loser }}</span>
-          需支付
-          <span class="amount">¥{{ settlement.amount }}</span>
-          给
-          <span class="winner">{{ settlement.winner }}</span>
+        
+        <!-- 转账详情 -->
+        <div class="transfers-section" v-if="settlementPreview.transfers.length > 0">
+          <div class="section-title">转账明细</div>
+          <div 
+            v-for="(transfer, index) in settlementPreview.transfers" 
+            :key="index"
+            class="transfer-item"
+          >
+            <span class="from">{{ transfer.from }}</span>
+            <div class="transfer-arrow">
+              <span class="diff">差{{ transfer.ballDiff }}球</span>
+              <t-icon name="arrow-right" />
+            </div>
+            <span class="to">{{ transfer.to }}</span>
+            <span class="amount">¥{{ transfer.amount }}</span>
+          </div>
         </div>
+        
         <div class="draw-result" v-else>
           平局！不需要转账
         </div>
@@ -312,7 +335,54 @@ const isOwner = computed(() => roomStore.isOwner)
 const canOperate = computed(() => roomStore.canOperate)
 const players = computed(() => roomStore.players)
 const rounds = computed(() => roomStore.rounds)
-const settlement = computed(() => roomStore.settlement)
+
+// 计算结算预览（支持多人模式）
+const settlementPreview = computed(() => {
+  if (!room.value || players.value.length < 2) return null
+  
+  const pricePerBall = room.value.pricePerBall || 5
+  
+  // 计算每个玩家的统计
+  const playerStats = players.value.map(p => {
+    const wins = rounds.value.filter(r => r.winner === p.name).length
+    const balls = rounds.value
+      .filter(r => r.winner === p.name)
+      .reduce((sum, r) => sum + r.ballsWon, 0)
+    return { name: p.name, wins, balls }
+  })
+  
+  // 按球数排序
+  const sorted = [...playerStats].sort((a, b) => b.balls - a.balls)
+  const score = playerStats.map(p => p.wins).join(':')
+  
+  // 计算转账（所有人向第一名转账）
+  const transfers: { from: string; to: string; amount: number; ballDiff: number }[] = []
+  
+  if (sorted[0].balls > 0) {
+    const winner = sorted[0]
+    
+    for (let i = 1; i < sorted.length; i++) {
+      const loser = sorted[i]
+      const ballDiff = winner.balls - loser.balls
+      const amount = ballDiff * pricePerBall
+      
+      if (amount > 0) {
+        transfers.push({
+          from: loser.name,
+          to: winner.name,
+          amount,
+          ballDiff
+        })
+      }
+    }
+  }
+  
+  return {
+    score,
+    playerStats: sorted,
+    transfers
+  }
+})
 
 const isFullscreen = ref(false)
 const showRoundInput = ref(false)
@@ -775,11 +845,10 @@ onUnmounted(() => {
 
 // 结算预览
 .settle-preview {
-  text-align: center;
-  
   .final-score {
     font-size: 20px;
-    margin-bottom: 16px;
+    margin-bottom: 20px;
+    text-align: center;
     
     strong {
       color: var(--primary-color);
@@ -787,29 +856,116 @@ onUnmounted(() => {
     }
   }
   
-  .ball-result {
-    margin-bottom: 16px;
-    color: var(--text-secondary);
+  // 球数统计
+  .balls-summary {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    
+    .ball-stat-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 20px;
+      
+      .player-avatar.mini {
+        width: 28px;
+        height: 28px;
+        font-size: 12px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        
+        &.player-1 { background: linear-gradient(135deg, #667eea, #764ba2); }
+        &.player-2 { background: linear-gradient(135deg, #f093fb, #f5576c); }
+        &.player-3 { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+        &.player-4 { background: linear-gradient(135deg, #fa709a, #fee140); }
+      }
+      
+      .name {
+        font-weight: 500;
+        color: var(--text-color);
+      }
+      
+      .balls {
+        font-weight: 700;
+        color: var(--primary-color);
+      }
+    }
   }
   
-  .money-result {
-    font-size: 18px;
-    padding: 16px;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.05);
+  // 转账明细
+  .transfers-section {
+    .section-title {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+      text-align: center;
+    }
     
-    .loser { color: var(--error-color); font-weight: 600; }
-    .winner { color: var(--success-color); font-weight: 600; }
-    .amount { 
-      font-size: 28px;
-      font-weight: bold;
-      color: var(--warning-color);
+    .transfer-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      
+      .from {
+        color: var(--error-color);
+        font-weight: 600;
+        min-width: 50px;
+      }
+      
+      .transfer-arrow {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        flex: 1;
+        
+        .diff {
+          font-size: 11px;
+          color: var(--text-secondary);
+          margin-bottom: 2px;
+        }
+        
+        .t-icon {
+          color: var(--warning-color);
+          font-size: 20px;
+        }
+      }
+      
+      .to {
+        color: var(--success-color);
+        font-weight: 600;
+        min-width: 50px;
+        text-align: right;
+      }
+      
+      .amount {
+        font-size: 20px;
+        font-weight: 800;
+        color: var(--warning-color);
+        margin-left: 12px;
+        min-width: 70px;
+        text-align: right;
+      }
     }
   }
   
   .draw-result {
     font-size: 18px;
     color: var(--text-secondary);
+    text-align: center;
+    padding: 20px;
   }
 }
 

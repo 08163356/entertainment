@@ -21,6 +21,24 @@
   --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
+// 浅色主题
+[data-theme="light"] {
+  --primary-color: #1a5d1a;
+  --primary-light: rgba(26, 93, 26, 0.2);
+  --bg-color: #f5f7fa;
+  --bg-gradient: linear-gradient(135deg, #e8ecf3 0%, #f5f7fa 50%, #e8ecf3 100%);
+  --card-bg: rgba(255, 255, 255, 0.9);
+  --card-border: rgba(0, 0, 0, 0.08);
+  --glass-blur: blur(20px);
+  --text-color: #1f2937;
+  --text-secondary: rgba(31, 41, 55, 0.65);
+  --border-color: rgba(0, 0, 0, 0.1);
+  --success-color: #16a34a;
+  --warning-color: #ca8a04;
+  --error-color: #dc2626;
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
 [data-theme="dark"] {
   --primary-color: #52c41a;
   --primary-light: rgba(82, 196, 26, 0.4);
@@ -222,7 +240,7 @@ body {
   }
 }
 
-// TDesign 组件覆盖样式
+// TDesign 组件覆盖样式（深色主题）
 .t-input, .t-select, .t-input-number {
   background: rgba(255, 255, 255, 0.08) !important;
   border-color: rgba(255, 255, 255, 0.15) !important;
@@ -262,5 +280,75 @@ body {
   
   &.t-is-selected {
     background: var(--primary-light) !important;
+  }
+}
+
+// 浅色主题 TDesign 组件覆盖
+[data-theme="light"] {
+  .t-input, .t-select, .t-input-number {
+    background: rgba(0, 0, 0, 0.03) !important;
+    border-color: rgba(0, 0, 0, 0.12) !important;
+    
+    .t-input__inner {
+      color: #1f2937 !important;
+    }
+    
+    &::placeholder {
+      color: rgba(31, 41, 55, 0.5) !important;
+    }
+  }
+  
+  .t-button--variant-text {
+    color: #1f2937 !important;
+  }
+  
+  .t-form__label {
+    color: rgba(31, 41, 55, 0.65) !important;
+  }
+  
+  .t-popup__content {
+    background: rgba(255, 255, 255, 0.98) !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  .t-select-option {
+    color: #1f2937 !important;
+    
+    &:hover, &.t-is-hover {
+      background: rgba(0, 0, 0, 0.05) !important;
+    }
+    
+    &.t-is-selected {
+      background: rgba(26, 93, 26, 0.15) !important;
+      color: #1a5d1a !important;
+    }
+  }
+  
+  .t-dialog {
+    .t-dialog__header {
+      color: #1f2937;
+    }
+    
+    .t-dialog__body {
+      color: #1f2937;
+    }
+  }
+  
+  .t-tag {
+    background: rgba(0, 0, 0, 0.06);
+    color: #1f2937;
+  }
+  
+  .t-badge .t-badge__inner {
+    background: var(--primary-color);
+  }
+  
+  // 滚动条浅色
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    
+    &:hover {
+      background: rgba(0, 0, 0, 0.25);
+    }
   }
 }

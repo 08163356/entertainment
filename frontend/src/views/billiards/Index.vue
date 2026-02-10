@@ -13,142 +13,203 @@
     </header>
 
     <main class="main-content">
-      <!-- 进行中的对局 -->
-      <div class="card active-rooms" v-if="activeRooms.length > 0">
-        <h2>进行中的对局</h2>
-        <div class="room-list">
-          <div 
-            v-for="room in activeRooms" 
-            :key="room.roomId"
-            class="room-item"
-            @click="quickJoin(room)"
-          >
-            <div class="room-players">
-              <span v-for="(p, i) in room.players" :key="p">
-                {{ p }}{{ i < room.players.length - 1 ? ' vs ' : '' }}
-              </span>
-            </div>
-            <div class="room-meta">
-              <t-tag theme="primary" size="small">房间 {{ room.roomId }}</t-tag>
-              <span class="round-count">第 {{ room.roundCount + 1 }} 局</span>
-            </div>
-            <t-icon name="chevron-right" class="arrow" />
+      <!-- 进行中的对局（折叠面板） -->
+      <div class="action-panel">
+        <div 
+          class="panel-header"
+          :class="{ active: expandedPanel === 'active', hasItems: activeRooms.length > 0 }"
+          @click="togglePanel('active')"
+        >
+          <div class="panel-title">
+            <t-icon name="play-circle" />
+            <span>进行中的比赛</span>
+            <t-badge v-if="activeRooms.length > 0" :count="activeRooms.length" />
           </div>
+          <t-icon :name="expandedPanel === 'active' ? 'chevron-up' : 'chevron-down'" class="arrow" />
         </div>
+        <t-collapse-transition>
+          <div class="panel-content" v-show="expandedPanel === 'active'">
+            <div v-if="activeRooms.length > 0" class="room-list">
+              <div 
+                v-for="room in activeRooms" 
+                :key="room.roomId"
+                class="room-item"
+                @click="quickJoin(room)"
+              >
+                <div class="room-players">
+                  <span v-for="(p, i) in room.players" :key="p">
+                    {{ p }}{{ i < room.players.length - 1 ? ' vs ' : '' }}
+                  </span>
+                </div>
+                <div class="room-meta">
+                  <t-tag theme="primary" size="small">房间 {{ room.roomId }}</t-tag>
+                  <span class="round-count">第 {{ room.roundCount + 1 }} 局</span>
+                </div>
+                <t-icon name="chevron-right" class="arrow" />
+              </div>
+            </div>
+            <div v-else class="empty-tip">暂无进行中的比赛</div>
+          </div>
+        </t-collapse-transition>
       </div>
 
-      <!-- 创建房间 -->
-      <div class="card create-room">
-        <h2>创建新比赛</h2>
-        
-        <t-form :data="formData" ref="formRef" @submit="handleCreate">
-          <t-form-item label="比赛类型">
-            <t-select v-model="formData.gameType" :options="gameTypeOptions" />
-          </t-form-item>
-          
-          <!-- 玩家列表 -->
-          <t-form-item label="参赛玩家">
-            <div class="players-section">
-              <div 
-                v-for="(player, index) in formData.players" 
-                :key="index"
-                class="player-input-row"
-              >
-                <div class="player-avatar-mini" :class="`player-${index + 1}`">
-                  {{ index + 1 }}
+      <!-- 创建新比赛（折叠面板） -->
+      <div class="action-panel">
+        <div 
+          class="panel-header create"
+          :class="{ active: expandedPanel === 'create' }"
+          @click="togglePanel('create')"
+        >
+          <div class="panel-title">
+            <t-icon name="add-circle" />
+            <span>创建新比赛</span>
+          </div>
+          <t-icon :name="expandedPanel === 'create' ? 'chevron-up' : 'chevron-down'" class="arrow" />
+        </div>
+        <t-collapse-transition>
+          <div class="panel-content" v-show="expandedPanel === 'create'">
+            <t-form :data="formData" ref="formRef" @submit="handleCreate">
+              <t-form-item label="比赛类型">
+                <t-select v-model="formData.gameType" :options="gameTypeOptions" />
+              </t-form-item>
+              
+              <t-form-item label="参赛玩家">
+                <div class="players-section">
+                  <div 
+                    v-for="(player, index) in formData.players" 
+                    :key="index"
+                    class="player-input-row"
+                  >
+                    <div class="player-avatar-mini" :class="`player-${index + 1}`">
+                      {{ index + 1 }}
+                    </div>
+                    <t-select
+                      v-model="formData.players[index]"
+                      :options="getPlayerOptions(index)"
+                      filterable
+                      creatable
+                      placeholder="选择或输入玩家名"
+                      class="player-select"
+                    />
+                    <t-button 
+                      v-if="formData.players.length > 2"
+                      variant="text" 
+                      theme="danger"
+                      shape="circle"
+                      size="small"
+                      @click="removePlayer(index)"
+                    >
+                      <t-icon name="close" />
+                    </t-button>
+                  </div>
+                  
+                  <t-button 
+                    v-if="formData.players.length < 4"
+                    variant="dashed" 
+                    block
+                    @click="addPlayer"
+                    class="add-player-btn"
+                  >
+                    <t-icon name="add" /> 添加玩家（最多4人）
+                  </t-button>
                 </div>
+              </t-form-item>
+              
+              <t-form-item label="单价（元/球）">
+                <t-input-number v-model="formData.pricePerBall" :min="0" :max="1000" />
+              </t-form-item>
+              
+              <t-form-item label="你是谁">
+                <t-select v-model="formData.currentUser" :options="currentUserOptions" />
+              </t-form-item>
+              
+              <t-form-item>
+                <t-button theme="primary" type="submit" block size="large" class="big-btn">
+                  创建房间开始比赛
+                </t-button>
+              </t-form-item>
+            </t-form>
+          </div>
+        </t-collapse-transition>
+      </div>
+
+      <!-- 加入房间（折叠面板） -->
+      <div class="action-panel">
+        <div 
+          class="panel-header join"
+          :class="{ active: expandedPanel === 'join' }"
+          @click="togglePanel('join')"
+        >
+          <div class="panel-title">
+            <t-icon name="enter" />
+            <span>加入房间</span>
+          </div>
+          <t-icon :name="expandedPanel === 'join' ? 'chevron-up' : 'chevron-down'" class="arrow" />
+        </div>
+        <t-collapse-transition>
+          <div class="panel-content" v-show="expandedPanel === 'join'">
+            <t-form @submit="handleJoin">
+              <t-form-item label="房间号或链接">
+                <t-input 
+                  v-model="joinInput" 
+                  placeholder="输入房间号(如:1234)或分享链接"
+                  clearable
+                />
+              </t-form-item>
+              <t-form-item label="你的名字">
                 <t-select
-                  v-model="formData.players[index]"
-                  :options="getPlayerOptions(index)"
+                  v-model="joinUserName"
+                  :options="allPlayerOptions"
                   filterable
                   creatable
-                  placeholder="选择或输入玩家名"
-                  class="player-select"
+                  placeholder="选择或输入你的名字"
                 />
-                <t-button 
-                  v-if="formData.players.length > 2"
-                  variant="text" 
-                  theme="danger"
-                  shape="circle"
-                  size="small"
-                  @click="removePlayer(index)"
-                >
-                  <t-icon name="close" />
+              </t-form-item>
+              <t-form-item>
+                <t-button theme="default" type="submit" block size="large">
+                  加入房间
                 </t-button>
-              </div>
-              
-              <t-button 
-                v-if="formData.players.length < 4"
-                variant="dashed" 
-                block
-                @click="addPlayer"
-                class="add-player-btn"
-              >
-                <t-icon name="add" /> 添加玩家（最多4人）
-              </t-button>
-            </div>
-          </t-form-item>
-          
-          <t-form-item label="单价（元/球）">
-            <t-input-number v-model="formData.pricePerBall" :min="0" :max="1000" />
-          </t-form-item>
-          
-          <t-form-item label="你是谁">
-            <t-select v-model="formData.currentUser" :options="currentUserOptions" />
-          </t-form-item>
-          
-          <t-form-item>
-            <t-button theme="primary" type="submit" block size="large" class="big-btn">
-              创建房间开始比赛
-            </t-button>
-          </t-form-item>
-        </t-form>
-      </div>
-
-      <!-- 加入房间 -->
-      <div class="card join-room">
-        <h2>加入房间</h2>
-        <t-form @submit="handleJoin">
-          <t-form-item label="房间号">
-            <t-input v-model="joinRoomId" placeholder="输入房间号" />
-          </t-form-item>
-          <t-form-item label="你的名字">
-            <t-select
-              v-model="joinUserName"
-              :options="allPlayerOptions"
-              filterable
-              creatable
-              placeholder="选择或输入你的名字"
-            />
-          </t-form-item>
-          <t-form-item>
-            <t-button theme="default" type="submit" block size="large">
-              加入房间
-            </t-button>
-          </t-form-item>
-        </t-form>
-      </div>
-
-      <!-- 玩家统计入口 -->
-      <div class="card player-stats-entry">
-        <h2>玩家战绩</h2>
-        <div class="player-list">
-          <div 
-            v-for="(player, index) in allPlayersWithStats" 
-            :key="player.name"
-            class="player-item"
-            @click="router.push(`/billiards/player/${encodeURIComponent(player.name)}`)"
-          >
-            <div class="player-avatar" :class="`player-${(index % 4) + 1}`">
-              {{ player.name[0] }}
-            </div>
-            <div class="player-info">
-              <span class="name">{{ player.name }}</span>
-              <span class="match-count" v-if="player.matchCount > 0">{{ player.matchCount }} 场比赛</span>
-            </div>
-            <t-icon name="chevron-right" />
+              </t-form-item>
+            </t-form>
           </div>
+        </t-collapse-transition>
+      </div>
+
+      <!-- 玩家战绩（折叠面板） -->
+      <div class="action-panel">
+        <div 
+          class="panel-header stats"
+          :class="{ active: expandedPanel === 'stats' }"
+          @click="togglePanel('stats')"
+        >
+          <div class="panel-title">
+            <t-icon name="chart-bar" />
+            <span>玩家战绩</span>
+          </div>
+          <t-icon :name="expandedPanel === 'stats' ? 'chevron-up' : 'chevron-down'" class="arrow" />
         </div>
+        <t-collapse-transition>
+          <div class="panel-content" v-show="expandedPanel === 'stats'">
+            <div class="player-list" v-if="allPlayersWithStats.length > 0">
+              <div 
+                v-for="(player, index) in allPlayersWithStats" 
+                :key="player.name"
+                class="player-item"
+                @click="router.push(`/billiards/player/${encodeURIComponent(player.name)}`)"
+              >
+                <div class="player-avatar" :class="`player-${(index % 4) + 1}`">
+                  {{ player.name[0] }}
+                </div>
+                <div class="player-info">
+                  <span class="name">{{ player.name }}</span>
+                  <span class="match-count" v-if="player.matchCount > 0">{{ player.matchCount }} 场比赛</span>
+                </div>
+                <t-icon name="chevron-right" />
+              </div>
+            </div>
+            <div v-else class="empty-tip">暂无玩家数据</div>
+          </div>
+        </t-collapse-transition>
       </div>
     </main>
   </div>
@@ -165,21 +226,21 @@ import { PRESET_PLAYERS, GAME_TYPES } from '@/types/billiards'
 const router = useRouter()
 const roomStore = useRoomStore()
 
+// 展开的面板（null 表示都不展开）
+const expandedPanel = ref<'active' | 'create' | 'join' | 'stats' | null>(null)
+
 const formRef = ref()
 const formData = ref({
   gameType: 'eight-ball',
-  players: ['阿兴', '老爸'],  // 默认2人
+  players: ['阿兴', '老爸'],
   pricePerBall: 5,
   currentUser: '阿兴'
 })
 
-const joinRoomId = ref('')
+const joinInput = ref('')  // 支持房间号或链接
 const joinUserName = ref(localStorage.getItem('userName') || '')
 
-// 所有玩家（预设+数据库中的）
 const allPlayersWithStats = ref<{ name: string; matchCount: number }[]>([])
-
-// 进行中的房间
 const activeRooms = ref<{ roomId: string; players: string[]; roundCount: number }[]>([])
 
 const gameTypeOptions = GAME_TYPES.map(t => ({ label: t.label, value: t.value }))
@@ -193,7 +254,6 @@ const allPlayerOptions = computed(() => {
 })
 
 function getPlayerOptions(currentIndex: number) {
-  // 过滤掉已选择的其他玩家
   const selectedPlayers = formData.value.players.filter((_, i) => i !== currentIndex)
   return allPlayerOptions.value.filter(opt => !selectedPlayers.includes(opt.value))
 }
@@ -204,6 +264,10 @@ const currentUserOptions = computed(() =>
     .map(p => ({ label: p, value: p }))
 )
 
+function togglePanel(panel: 'active' | 'create' | 'join' | 'stats') {
+  expandedPanel.value = expandedPanel.value === panel ? null : panel
+}
+
 function addPlayer() {
   if (formData.value.players.length < 4) {
     formData.value.players.push('')
@@ -213,11 +277,37 @@ function addPlayer() {
 function removePlayer(index: number) {
   if (formData.value.players.length > 2) {
     formData.value.players.splice(index, 1)
-    // 如果当前用户被移除，重置
     if (!formData.value.players.includes(formData.value.currentUser)) {
       formData.value.currentUser = formData.value.players[0] || ''
     }
   }
+}
+
+// 从输入中解析房间号（支持链接或纯房间号）
+function parseRoomId(input: string): string {
+  if (!input) return ''
+  
+  // 尝试从链接中提取房间号
+  // 支持格式: 
+  // - https://xxx/billiards/room/1234
+  // - /billiards/room/1234
+  // - room/1234
+  // - 1234
+  const patterns = [
+    /\/room\/(\d{4})/,           // URL 格式
+    /room\/(\d{4})/,             // 部分 URL
+    /^(\d{4})$/                  // 纯房间号
+  ]
+  
+  for (const pattern of patterns) {
+    const match = input.match(pattern)
+    if (match) {
+      return match[1]
+    }
+  }
+  
+  // 如果都不匹配，返回去除空格后的输入
+  return input.trim()
 }
 
 async function handleCreate() {
@@ -260,8 +350,10 @@ async function handleCreate() {
 }
 
 async function handleJoin() {
-  if (!joinRoomId.value) {
-    MessagePlugin.warning('请输入房间号')
+  const roomId = parseRoomId(joinInput.value)
+  
+  if (!roomId) {
+    MessagePlugin.warning('请输入房间号或分享链接')
     return
   }
   if (!joinUserName.value) {
@@ -270,9 +362,9 @@ async function handleJoin() {
   }
   
   try {
-    await roomApi.join(joinRoomId.value, joinUserName.value)
+    await roomApi.join(roomId, joinUserName.value)
     roomStore.setCurrentUser(joinUserName.value)
-    router.push(`/billiards/room/${joinRoomId.value}`)
+    router.push(`/billiards/room/${roomId}`)
   } catch (e: any) {
     MessagePlugin.error(e.response?.data?.detail || '加入房间失败')
   }
@@ -296,11 +388,8 @@ async function quickJoin(room: { roomId: string }) {
 
 async function loadData() {
   try {
-    // 加载所有玩家
     const players = await playerApi.getPlayers()
-    // 合并预设玩家
     const presetNames = PRESET_PLAYERS.map(p => p.name)
-    const existingNames = players.map(p => p.name)
     
     allPlayersWithStats.value = [
       ...PRESET_PLAYERS.map(p => ({
@@ -310,12 +399,15 @@ async function loadData() {
       ...players.filter(p => !presetNames.includes(p.name))
     ]
     
-    // 加载进行中的房间
     try {
       const rooms = await roomApi.getActiveRooms()
       activeRooms.value = rooms
+      // 如果有进行中的房间，自动展开
+      if (rooms.length > 0) {
+        expandedPanel.value = 'active'
+      }
     } catch {
-      // 可能API不存在，忽略
+      // API不存在时忽略
     }
   } catch (e) {
     console.error('加载数据失败', e)
@@ -352,36 +444,82 @@ onMounted(() => {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
 }
 
-.card {
+// 折叠面板
+.action-panel {
   background: var(--card-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--card-border);
-  border-radius: 20px;
-  padding: 24px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 20px;
+  cursor: pointer;
+  transition: all 0.3s;
   
-  h2 {
-    font-size: 18px;
-    margin-bottom: 20px;
-    color: var(--text-color);
-    font-weight: 600;
+  &:hover {
+    background: rgba(255, 255, 255, 0.05);
   }
+  
+  &.active {
+    background: rgba(255, 255, 255, 0.08);
+  }
+  
+  &.hasItems {
+    background: linear-gradient(135deg, rgba(82, 196, 26, 0.15), rgba(82, 196, 26, 0.05));
+    
+    .panel-title .t-icon {
+      color: var(--success-color);
+    }
+  }
+  
+  &.create .panel-title .t-icon {
+    color: var(--primary-color);
+  }
+  
+  &.join .panel-title .t-icon {
+    color: #60a5fa;
+  }
+  
+  &.stats .panel-title .t-icon {
+    color: #f59e0b;
+  }
+  
+  .panel-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-color);
+    
+    .t-icon {
+      font-size: 22px;
+    }
+  }
+  
+  .arrow {
+    color: var(--text-secondary);
+    transition: transform 0.3s;
+  }
+}
+
+.panel-content {
+  padding: 0 20px 20px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 20px;
 }
 
 // 进行中房间
-.active-rooms {
-  background: linear-gradient(135deg, rgba(82, 196, 26, 0.15), rgba(82, 196, 26, 0.05));
-  border-color: rgba(82, 196, 26, 0.3);
-  
-  h2 {
-    color: var(--success-color);
-  }
-}
-
 .room-list {
   display: flex;
   flex-direction: column;
@@ -527,18 +665,30 @@ onMounted(() => {
   }
 }
 
+.empty-tip {
+  text-align: center;
+  padding: 24px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
 // 响应式
 @media (max-width: 480px) {
   .billiards-page {
     padding: 16px;
   }
   
-  .card {
-    padding: 20px;
-  }
-  
   .header h1 {
     font-size: 20px;
+  }
+  
+  .panel-header {
+    padding: 14px 16px;
+  }
+  
+  .panel-content {
+    padding: 0 16px 16px;
+    padding-top: 16px;
   }
 }
 </style>
