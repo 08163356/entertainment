@@ -78,6 +78,13 @@ export const useRoomStore = defineStore('room', () => {
     }
   }
 
+  function updateOwner(owner: string, operators: string[]) {
+    if (room.value) {
+      room.value.owner = owner
+      room.value.operators = operators
+    }
+  }
+
   function setConnected(status: boolean) {
     connected.value = status
   }
@@ -101,6 +108,7 @@ export const useRoomStore = defineStore('room', () => {
     addRound,
     undoLastRound,
     updateOperators,
+    updateOwner,
     setConnected,
     reset
   }

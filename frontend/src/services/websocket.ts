@@ -65,6 +65,9 @@ class WebSocketService {
       case 'operators_updated':
         roomStore.updateOperators(message.data.operators)
         break
+      case 'owner_transferred':
+        roomStore.updateOwner(message.data.owner, message.data.operators)
+        break
       case 'room_settled':
         roomStore.setRoom(message.data as Room)
         break

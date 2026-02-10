@@ -25,12 +25,15 @@ class RoomManager:
         default_score_mode: str = "rounds"
     ):
         """创建房间"""
+        # 所有参赛玩家默认有编辑权限
+        player_names = [p.name for p in players]
+        
         self.rooms[room_id] = {
             "id": room_id,
             "gameType": game_type,
             "owner": owner,
             "players": [{"name": p.name, "isPreset": p.isPreset} for p in players],
-            "operators": [owner],  # 房主默认有操作权限
+            "operators": player_names.copy(),  # 所有参赛玩家默认有操作权限
             "spectators": [],
             "rounds": [],
             "pricePerBall": price_per_ball,
@@ -78,6 +81,24 @@ class RoomManager:
         room = self.rooms.get(room_id)
         if room and user_name in room["operators"] and user_name != room["owner"]:
             room["operators"].remove(user_name)
+    
+    def transfer_owner(self, room_id: str, new_owner: str) -> bool:
+        """转移房主"""
+        room = self.rooms.get(room_id)
+        if not room:
+            return False
+        
+        # 新房主必须是参赛玩家
+        is_player = any(p["name"] == new_owner for p in room["players"])
+        if not is_player:
+            return False
+        
+        # 确保新房主在操作者列表中
+        if new_owner not in room["operators"]:
+            room["operators"].append(new_owner)
+        
+        room["owner"] = new_owner
+        return True
     
     def add_round(self, room_id: str, round_data: Any):
         """添加一局记录"""

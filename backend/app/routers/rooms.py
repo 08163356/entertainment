@@ -211,6 +211,29 @@ async def revoke_operator(room_id: str, user_name: str):
     
     return {"success": True}
 
+@router.post("/{room_id}/transfer-owner")
+async def transfer_owner(room_id: str, data: OperatorGrant):
+    """转移房主"""
+    room = room_manager.get_room(room_id)
+    if not room:
+        raise HTTPException(status_code=404, detail="房间不存在")
+    
+    success = room_manager.transfer_owner(room_id, data.userName)
+    if not success:
+        raise HTTPException(status_code=400, detail="转移失败，目标用户必须是参赛玩家")
+    
+    # 广播房主变更
+    updated_room = room_manager.get_room(room_id)
+    await room_manager.broadcast(room_id, {
+        "type": "owner_transferred",
+        "data": {
+            "owner": updated_room["owner"],
+            "operators": updated_room["operators"]
+        }
+    })
+    
+    return {"success": True}
+
 @router.post("/{room_id}/settle", response_model=MatchResponse)
 async def settle_room(room_id: str, db: AsyncSession = Depends(get_db)):
     """结算房间"""

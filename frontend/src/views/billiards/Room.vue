@@ -298,7 +298,7 @@
       v-model:visible="showOperators"
       header="权限管理"
       placement="right"
-      size="300px"
+      size="320px"
     >
       <div class="operators-panel">
         <div class="section">
@@ -310,20 +310,67 @@
         </div>
         
         <div class="section">
-          <h4>可操作者</h4>
+          <h4>参赛玩家</h4>
           <div 
-            v-for="op in room?.operators.filter(o => o !== room?.owner)" 
-            :key="op"
-            class="user-item"
+            v-for="player in room?.players" 
+            :key="player.name"
+            class="user-item player-item"
           >
-            <span>{{ op }}</span>
-            <t-button size="small" theme="danger" @click="revokeOperator(op)">
-              移除
-            </t-button>
+            <span class="name">{{ player.name }}</span>
+            <div class="user-actions">
+              <!-- 权限状态 -->
+              <t-tag 
+                v-if="room?.operators.includes(player.name)"
+                theme="success" 
+                size="small"
+              >
+                可编辑
+              </t-tag>
+              <t-tag v-else theme="default" size="small">仅观看</t-tag>
+              
+              <!-- 房主操作 -->
+              <template v-if="isOwner && player.name !== room?.owner">
+                <t-button 
+                  v-if="room?.operators.includes(player.name)"
+                  size="small" 
+                  theme="danger"
+                  variant="text"
+                  @click="revokeOperator(player.name)"
+                >
+                  取消权限
+                </t-button>
+                <t-button 
+                  v-else
+                  size="small"
+                  variant="text"
+                  @click="grantOperator(player.name)"
+                >
+                  授权
+                </t-button>
+                
+                <t-button 
+                  size="small" 
+                  theme="warning"
+                  variant="text"
+                  @click="handleTransferOwner(player.name)"
+                >
+                  转让房主
+                </t-button>
+              </template>
+              
+              <!-- 房主标识 -->
+              <t-tag 
+                v-if="player.name === room?.owner" 
+                theme="warning" 
+                size="small"
+              >
+                房主
+              </t-tag>
+            </div>
           </div>
         </div>
         
-        <div class="section">
+        <div class="section" v-if="room?.spectators.length">
           <h4>观众</h4>
           <div 
             v-for="spec in room?.spectators" 
@@ -331,10 +378,21 @@
             class="user-item"
           >
             <span>{{ spec }}</span>
-            <t-button size="small" @click="grantOperator(spec)">
+            <t-button 
+              v-if="isOwner"
+              size="small" 
+              variant="text"
+              @click="grantOperator(spec)"
+            >
               授权
             </t-button>
           </div>
+        </div>
+        
+        <div class="tips">
+          <p>💡 参赛玩家默认拥有编辑权限</p>
+          <p>💡 房主可以添加/取消其他人的编辑权限</p>
+          <p>💡 房主可以转让房主身份给其他参赛玩家</p>
         </div>
       </div>
     </t-drawer>
@@ -528,6 +586,15 @@ async function revokeOperator(userName: string) {
     MessagePlugin.success(`已移除 ${userName} 的权限`)
   } catch (e: any) {
     MessagePlugin.error(e.response?.data?.detail || '操作失败')
+  }
+}
+
+async function handleTransferOwner(userName: string) {
+  try {
+    await roomApi.transferOwner(roomId.value, userName)
+    MessagePlugin.success(`已将房主转让给 ${userName}`)
+  } catch (e: any) {
+    MessagePlugin.error(e.response?.data?.detail || '转让失败')
   }
 }
 
@@ -1137,6 +1204,37 @@ onUnmounted(() => {
     
     &.owner {
       background: rgba(250, 173, 20, 0.1);
+    }
+    
+    &.player-item {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+      
+      .name {
+        font-weight: 500;
+        color: var(--text-color);
+      }
+      
+      .user-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+      }
+    }
+  }
+  
+  .tips {
+    margin-top: 24px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    
+    p {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin: 4px 0;
     }
   }
 }

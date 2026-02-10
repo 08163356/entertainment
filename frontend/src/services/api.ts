@@ -48,6 +48,11 @@ export const roomApi = {
     return api.delete(`/rooms/${roomId}/operators/${userName}`).then(res => res.data)
   },
 
+  // 转移房主
+  transferOwner(roomId: string, userName: string): Promise<void> {
+    return api.post(`/rooms/${roomId}/transfer-owner`, { userName }).then(res => res.data)
+  },
+
   // 结算房间
   settle(roomId: string): Promise<MatchRecord> {
     return api.post(`/rooms/${roomId}/settle`).then(res => res.data)
