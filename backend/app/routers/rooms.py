@@ -93,13 +93,17 @@ async def join_room(room_id: str, data: RoomJoin, db: AsyncSession = Depends(get
     if not room:
         raise HTTPException(status_code=404, detail="房间不存在或已关闭")
     
-    # 确保玩家存在于数据库（新玩家自动入库）
-    result = await db.execute(select(Player).where(Player.name == data.userName))
-    existing = result.scalar_one_or_none()
-    if not existing:
-        db_player = Player(name=data.userName, is_preset=False)
-        db.add(db_player)
-        await db.commit()
+    # 检查是否是参赛玩家
+    is_player = any(p["name"] == data.userName for p in room["players"])
+    
+    # 只有参赛玩家才记录到数据库（游客不记录）
+    if is_player:
+        result = await db.execute(select(Player).where(Player.name == data.userName))
+        existing = result.scalar_one_or_none()
+        if not existing:
+            db_player = Player(name=data.userName, is_preset=False)
+            db.add(db_player)
+            await db.commit()
     
     room_manager.add_spectator(room_id, data.userName)
     return room_manager.get_room(room_id)
