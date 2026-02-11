@@ -18,16 +18,17 @@
           <div class="card-glow"></div>
         </div>
         
+        <div class="tool-card basketball" @click="router.push('/basketball')">
+          <div class="tool-icon">🏀</div>
+          <h3>投篮记分</h3>
+          <p>投篮比赛记分，支持多人对战</p>
+          <div class="card-glow"></div>
+        </div>
+        
         <div class="tool-card disabled">
           <div class="tool-icon">🎲</div>
           <h3>桌游工具</h3>
           <p>即将上线</p>
-        </div>
-        
-        <div class="tool-card disabled">
-          <div class="tool-icon">🎯</div>
-          <h3>更多工具</h3>
-          <p>敬请期待</p>
         </div>
       </div>
     </main>

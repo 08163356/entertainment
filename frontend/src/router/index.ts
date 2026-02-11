@@ -8,6 +8,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/Home.vue'),
     meta: { title: '娱乐工具集' }
   },
+  // 台球模块
   {
     path: '/billiards',
     name: 'Billiards',
@@ -31,6 +32,37 @@ const routes: RouteRecordRaw[] = [
     name: 'PlayerStats',
     component: () => import('@/views/billiards/PlayerStats.vue'),
     meta: { title: '玩家统计' }
+  },
+  // 投篮模块
+  {
+    path: '/basketball',
+    name: 'Basketball',
+    component: () => import('@/views/basketball/Index.vue'),
+    meta: { title: '投篮记分' }
+  },
+  {
+    path: '/basketball/room/:roomId',
+    name: 'BasketballRoom',
+    component: () => import('@/views/basketball/Room.vue'),
+    meta: { title: '投篮比赛' }
+  },
+  {
+    path: '/basketball/practice',
+    name: 'BasketballPractice',
+    component: () => import('@/views/basketball/Practice.vue'),
+    meta: { title: '个人练习' }
+  },
+  {
+    path: '/basketball/history',
+    name: 'BasketballHistory',
+    component: () => import('@/views/basketball/History.vue'),
+    meta: { title: '投篮历史' }
+  },
+  {
+    path: '/basketball/player/:name',
+    name: 'BasketballPlayerStats',
+    component: () => import('@/views/basketball/PlayerStats.vue'),
+    meta: { title: '玩家战绩' }
   }
 ]
 

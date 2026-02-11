@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from app.database import init_db
 from app.routers import rooms, matches, players, websocket
+from app.routers import basketball_rooms, basketball_matches, basketball_practices, basketball_websocket
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -28,11 +29,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 注册路由
-app.include_router(rooms.router, prefix="/api/rooms", tags=["rooms"])
-app.include_router(matches.router, prefix="/api/matches", tags=["matches"])
-app.include_router(players.router, prefix="/api/players", tags=["players"])
-app.include_router(websocket.router, tags=["websocket"])
+# 台球路由
+app.include_router(rooms.router, prefix="/api/rooms", tags=["billiards-rooms"])
+app.include_router(matches.router, prefix="/api/matches", tags=["billiards-matches"])
+app.include_router(players.router, prefix="/api/players", tags=["billiards-players"])
+app.include_router(websocket.router, tags=["billiards-websocket"])
+
+# 投篮路由
+app.include_router(basketball_rooms.router, prefix="/api/basketball/rooms", tags=["basketball-rooms"])
+app.include_router(basketball_matches.router, prefix="/api/basketball/matches", tags=["basketball-matches"])
+app.include_router(basketball_practices.router, prefix="/api/basketball/practices", tags=["basketball-practices"])
+app.include_router(basketball_websocket.router, tags=["basketball-websocket"])
 
 @app.get("/api/health")
 async def health_check():

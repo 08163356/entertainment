@@ -12,6 +12,7 @@ class Base(DeclarativeBase):
 
 async def init_db():
     from app.models import Player, Match, Round
+    from app.models_basketball import BasketballMatch, BasketballRound, BasketballPractice, BasketballPlayer
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
