@@ -134,8 +134,12 @@
         结算
       </t-button>
       
-      <div v-if="!isPlayer" class="spectator-tip">
+      <div v-if="!isPlayer && !roomStore.isSelfEditOnly" class="spectator-tip">
         观战中 - 只有参赛者可记录
+      </div>
+      
+      <div v-if="roomStore.isSelfEditOnly" class="spectator-tip self-edit-tip">
+        仅可编辑自己的得分
       </div>
     </footer>
 
@@ -291,6 +295,8 @@
       header="权限管理"
       placement="right"
       size="320px"
+      :z-index="2000"
+      attach="body"
     >
       <div class="operators-panel">
         <div class="section">
@@ -310,33 +316,34 @@
           >
             <span class="name">{{ player.name }}</span>
             <div class="user-actions">
+              <!-- 权限标签 -->
               <t-tag 
                 v-if="room?.operators.includes(player.name)"
                 theme="success" 
                 size="small"
               >
-                可编辑
+                完整权限
+              </t-tag>
+              <t-tag 
+                v-else-if="room?.selfEditOnly?.includes(player.name)"
+                theme="warning" 
+                size="small"
+              >
+                仅编辑自己
               </t-tag>
               <t-tag v-else theme="default" size="small">仅观看</t-tag>
               
+              <!-- 房主操作按钮 -->
               <template v-if="isOwner && player.name !== room?.owner">
-                <t-button 
-                  v-if="room?.operators.includes(player.name)"
-                  size="small" 
-                  theme="danger"
-                  variant="text"
-                  @click="revokeOperator(player.name)"
+                <t-dropdown 
+                  :options="getPermissionOptions(player.name)" 
+                  @click="(item: any) => handlePermissionChange(player.name, item.value)"
                 >
-                  取消权限
-                </t-button>
-                <t-button 
-                  v-else
-                  size="small"
-                  variant="text"
-                  @click="grantOperator(player.name)"
-                >
-                  授权
-                </t-button>
+                  <t-button size="small" variant="outline">
+                    权限设置
+                    <t-icon name="chevron-down" />
+                  </t-button>
+                </t-dropdown>
                 
                 <t-button 
                   size="small" 
@@ -379,9 +386,9 @@
         </div>
         
         <div class="tips">
-          <p>💡 参赛玩家默认拥有编辑权限</p>
-          <p>💡 房主可以添加/取消其他人的编辑权限</p>
-          <p>💡 房主可以转让房主身份给其他参赛玩家</p>
+          <p>💡 <strong>完整权限</strong>：可编辑所有人、下一轮、撤销、结算</p>
+          <p>💡 <strong>仅编辑自己</strong>：只能编辑自己的得分</p>
+          <p>💡 <strong>仅观看</strong>：不能进行任何编辑操作</p>
         </div>
       </div>
     </t-drawer>
@@ -480,8 +487,13 @@ function canClickCard(playerName: string): boolean {
   if (room.value?.status !== 'playing') return false
   // 房主可以编辑所有人的数据
   if (isOwner.value) return true
-  // 普通用户只能点击自己的卡片
-  return playerName === roomStore.currentUser
+  // 完整权限用户可以编辑所有人
+  if (canOperate.value) return true
+  // selfEditOnly 用户只能编辑自己
+  if (roomStore.isSelfEditOnly && playerName === roomStore.currentUser) return true
+  // 普通玩家如果在 operators 里可以编辑
+  if (isPlayer.value && playerName === roomStore.currentUser) return true
+  return false
 }
 
 // 点击卡片
@@ -623,7 +635,7 @@ async function handleSettle() {
 async function grantOperator(userName: string) {
   try {
     await basketballRoomApi.grantOperator(roomId.value, userName)
-    MessagePlugin.success(`已授权 ${userName}`)
+    MessagePlugin.success(`已授权 ${userName} 完整权限`)
   } catch (e: any) {
     MessagePlugin.error(e.response?.data?.detail || '授权失败')
   }
@@ -635,6 +647,43 @@ async function revokeOperator(userName: string) {
     MessagePlugin.success(`已移除 ${userName} 的权限`)
   } catch (e: any) {
     MessagePlugin.error(e.response?.data?.detail || '操作失败')
+  }
+}
+
+async function setSelfEditOnly(userName: string) {
+  try {
+    await basketballRoomApi.setSelfEditOnly(roomId.value, userName)
+    MessagePlugin.success(`已设置 ${userName} 为仅编辑自己`)
+  } catch (e: any) {
+    MessagePlugin.error(e.response?.data?.detail || '操作失败')
+  }
+}
+
+function getPermissionOptions(playerName: string) {
+  const currentPermission = room.value?.operators.includes(playerName) 
+    ? 'full' 
+    : room.value?.selfEditOnly?.includes(playerName) 
+      ? 'self' 
+      : 'none'
+  
+  return [
+    { content: '✅ 完整权限', value: 'full', disabled: currentPermission === 'full' },
+    { content: '📝 仅编辑自己', value: 'self', disabled: currentPermission === 'self' },
+    { content: '👀 仅观看', value: 'none', disabled: currentPermission === 'none' }
+  ]
+}
+
+async function handlePermissionChange(playerName: string, permission: string) {
+  switch (permission) {
+    case 'full':
+      await grantOperator(playerName)
+      break
+    case 'self':
+      await setSelfEditOnly(playerName)
+      break
+    case 'none':
+      await revokeOperator(playerName)
+      break
   }
 }
 
@@ -946,7 +995,7 @@ onUnmounted(() => {
   
   .leading-badge {
     position: absolute;
-    bottom: -10px;
+    bottom: -30px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 2;
@@ -1299,6 +1348,7 @@ onUnmounted(() => {
   right: 20px;
   background: var(--card-bg) !important;
   backdrop-filter: blur(10px);
+  z-index: 100;
 }
 
 @media (max-width: 600px) {

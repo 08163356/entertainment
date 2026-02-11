@@ -25,6 +25,12 @@ export const useBasketballRoomStore = defineStore('basketballRoom', () => {
     return room.value.operators.includes(currentUser.value)
   })
   
+  // 当前用户是否只能编辑自己
+  const isSelfEditOnly = computed(() => {
+    if (!room.value || !currentUser.value) return false
+    return room.value.selfEditOnly?.includes(currentUser.value) || false
+  })
+  
   // 当前用户是否是参赛玩家
   const isPlayer = computed(() => {
     if (!room.value || !currentUser.value) return false
@@ -100,9 +106,12 @@ export const useBasketballRoomStore = defineStore('basketballRoom', () => {
     }
   }
 
-  function updateOperators(operators: string[]) {
+  function updateOperators(operators: string[], selfEditOnly?: string[]) {
     if (room.value) {
       room.value.operators = operators
+      if (selfEditOnly !== undefined) {
+        room.value.selfEditOnly = selfEditOnly
+      }
     }
   }
 
@@ -142,6 +151,7 @@ export const useBasketballRoomStore = defineStore('basketballRoom', () => {
     currentRoundStatus,
     isOwner,
     canOperate,
+    isSelfEditOnly,
     isPlayer,
     hasSubmitted,
     players,

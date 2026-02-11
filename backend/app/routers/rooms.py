@@ -281,8 +281,19 @@ async def settle_room(room_id: str, db: AsyncSession = Depends(get_db)):
         # 广播结算（0:0 比赛）
         await room_manager.broadcast(room_id, {
             "type": "room_settled",
-            "data": room_manager.get_room(room_id),
-            "isZeroMatch": True
+            "data": {
+                "room": room_manager.get_room(room_id),
+                "settlement": {
+                    "score": "0:0",
+                    "winner": None,
+                    "loser": None,
+                    "ballDiff": 0,
+                    "amount": 0
+                },
+                "transfers": [],
+                "playerStats": [{"name": name, "wins": stats["wins"], "balls": stats["balls"]} for name, stats in player_stats.items()],
+                "isZeroMatch": True
+            }
         })
         
         # 返回空结算数据，而不是抛异常
@@ -390,8 +401,13 @@ async def settle_room(room_id: str, db: AsyncSession = Depends(get_db)):
     # 广播结算
     await room_manager.broadcast(room_id, {
         "type": "room_settled",
-        "data": room_manager.get_room(room_id),
-        "transfers": transfers
+        "data": {
+            "room": room_manager.get_room(room_id),
+            "settlement": settlement_data.model_dump(),
+            "transfers": transfers,
+            "playerStats": [{"name": name, "wins": stats["wins"], "balls": stats["balls"]} for name, stats in sorted_players],
+            "isZeroMatch": False
+        }
     })
     
     return match_response

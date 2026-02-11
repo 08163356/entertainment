@@ -1,5 +1,5 @@
 <template>
-  <div class="room-page" :class="{ 'fullscreen-mode': isFullscreen }">
+  <div class="room-page" :class="{ 'fullscreen-mode': isFullscreen, 'landscape-fullscreen': isFullscreen }">
     <!-- 顶部栏 -->
     <header class="header" v-show="!isFullscreen">
       <t-button variant="text" @click="handleBack">
@@ -36,8 +36,48 @@
       <t-icon name="fullscreen-exit" />
     </t-button>
 
+    <!-- 全屏横屏比分展示 -->
+    <div class="fullscreen-score-panel" v-if="isFullscreen && players.length === 2">
+      <!-- 比分切换按钮 -->
+      <div class="fs-score-mode-switch">
+        <t-button 
+          :theme="scoreMode === 'rounds' ? 'primary' : 'default'"
+          :variant="scoreMode === 'rounds' ? 'base' : 'outline'"
+          size="medium"
+          @click="scoreMode = 'rounds'"
+        >
+          对局
+        </t-button>
+        <t-button 
+          :theme="scoreMode === 'balls' ? 'primary' : 'default'"
+          :variant="scoreMode === 'balls' ? 'base' : 'outline'"
+          size="medium"
+          @click="scoreMode = 'balls'"
+        >
+          球数
+        </t-button>
+      </div>
+      
+      <!-- 超大比分显示 -->
+      <div class="fs-score-display" :class="scoreMode">
+        <span class="fs-score-p1">{{ scoreMode === 'rounds' ? getPlayerWins(players[0]?.name) : getPlayerBalls(players[0]?.name) }}</span>
+        <span class="fs-score-divider">:</span>
+        <span class="fs-score-p2">{{ scoreMode === 'rounds' ? getPlayerWins(players[1]?.name) : getPlayerBalls(players[1]?.name) }}</span>
+      </div>
+      
+      <div class="fs-round-info">
+        第 {{ rounds.length + 1 }} 局
+        <span class="fs-sub-score" v-if="scoreMode === 'rounds'">
+          （球数 {{ getPlayerBalls(players[0]?.name) }}:{{ getPlayerBalls(players[1]?.name) }}）
+        </span>
+        <span class="fs-sub-score" v-else>
+          （对局 {{ getPlayerWins(players[0]?.name) }}:{{ getPlayerWins(players[1]?.name) }}）
+        </span>
+      </div>
+    </div>
+
     <!-- 主记分板 -->
-    <main class="scoreboard" :class="{ 'multi-player': players.length > 2 }">
+    <main class="scoreboard" :class="{ 'multi-player': players.length > 2 }" v-show="!isFullscreen">
       <!-- 中间大比分（2人模式） -->
       <div class="score-center" v-if="players.length === 2">
         <!-- 比分切换按钮 -->
@@ -121,7 +161,7 @@
     </main>
 
     <!-- 操作按钮区 -->
-    <footer class="actions" v-if="room?.status === 'playing'">
+    <footer class="actions" v-if="room?.status === 'playing'" v-show="!isFullscreen">
       <template v-if="canOperate">
         <t-button 
           v-if="!showRoundInput"
@@ -157,7 +197,7 @@
     </footer>
 
     <!-- 已结算状态 -->
-    <div v-if="room?.status === 'settled'" class="settled-banner">
+    <div v-if="room?.status === 'settled'" class="settled-banner" v-show="!isFullscreen">
       <h2>比赛已结算</h2>
       <t-button @click="router.push('/billiards/history')">查看历史记录</t-button>
     </div>
@@ -298,6 +338,102 @@
       </div>
     </t-dialog>
 
+    <!-- 结算结果弹窗（WebSocket推送） -->
+    <t-dialog
+      v-model:visible="showSettlementResult"
+      header="比赛结算"
+      :footer="false"
+      width="90%"
+      :style="{ maxWidth: '450px' }"
+      @close="handleCloseSettlementResult"
+    >
+      <div class="settlement-result-panel" v-if="roomStore.settlementResult">
+        <!-- 0:0 比赛 -->
+        <div v-if="roomStore.settlementResult.isZeroMatch" class="zero-match">
+          <div class="zero-icon">🤝</div>
+          <div class="zero-text">0:0 比赛不计入战绩</div>
+        </div>
+        
+        <!-- 正常结算 -->
+        <template v-else>
+          <!-- 胜利装饰图 -->
+          <div class="victory-decoration" v-if="roomStore.settlementResult.transfers.length > 0">
+            <img src="@/assets/结算胜利图.png" alt="Victory" class="victory-img" />
+          </div>
+          
+          <div class="final-score">
+            最终比分: <strong>{{ roomStore.settlementResult.settlement.score }}</strong>
+          </div>
+          
+          <!-- 球数展示 -->
+          <div class="balls-summary">
+            <div 
+              v-for="(stat, index) in roomStore.settlementResult.playerStats" 
+              :key="stat.name"
+              class="ball-stat-item"
+            >
+              <div class="player-avatar mini" :class="`player-${index + 1}`">
+                {{ stat.name[0] }}
+              </div>
+              <span class="name">{{ stat.name }}</span>
+              <span class="balls">{{ stat.balls }}球</span>
+            </div>
+          </div>
+          
+          <!-- 转账提示 - 针对当前用户 -->
+          <div class="my-transfer-tip" v-if="getMyTransferInfo">
+            <div class="tip-content" :class="getMyTransferInfo.type">
+              <template v-if="getMyTransferInfo.type === 'pay'">
+                <div class="tip-icon">💸</div>
+                <div class="tip-text">
+                  你需要向 <strong>{{ getMyTransferInfo.target }}</strong> 转账
+                  <span class="tip-amount">¥{{ getMyTransferInfo.amount }}</span>
+                </div>
+              </template>
+              <template v-else-if="getMyTransferInfo.type === 'receive'">
+                <div class="tip-icon">🎉</div>
+                <div class="tip-text">
+                  你将收到 <span class="tip-amount">¥{{ getMyTransferInfo.amount }}</span>
+                </div>
+              </template>
+              <template v-else>
+                <div class="tip-icon">🤝</div>
+                <div class="tip-text">平局，无需转账</div>
+              </template>
+            </div>
+          </div>
+          
+          <!-- 转账详情 -->
+          <div class="transfers-section" v-if="roomStore.settlementResult.transfers.length > 0">
+            <div class="section-title">转账明细</div>
+            <div 
+              v-for="(transfer, index) in roomStore.settlementResult.transfers" 
+              :key="index"
+              class="transfer-item"
+              :class="{ highlight: transfer.from === roomStore.currentUser || transfer.to === roomStore.currentUser }"
+            >
+              <span class="from">{{ transfer.from }}</span>
+              <div class="transfer-arrow">
+                <span class="diff">差{{ transfer.ballDiff }}球</span>
+                <t-icon name="arrow-right" />
+              </div>
+              <span class="to">{{ transfer.to }}</span>
+              <span class="amount">¥{{ transfer.amount }}</span>
+            </div>
+          </div>
+          
+          <div class="draw-result" v-else>
+            平局！不需要转账
+          </div>
+        </template>
+        
+        <div class="result-actions">
+          <t-button theme="primary" @click="handleCloseSettlementResult">知道了</t-button>
+          <t-button @click="router.push('/billiards/history')">查看历史</t-button>
+        </div>
+      </div>
+    </t-dialog>
+
     <!-- 权限管理 -->
     <t-drawer
       v-model:visible="showOperators"
@@ -405,6 +541,7 @@
     <!-- 房主操作入口 -->
     <t-button 
       v-if="isOwner && room?.status === 'playing'"
+      v-show="!isFullscreen"
       class="operators-btn"
       shape="circle"
       @click="showOperators = true"
@@ -415,7 +552,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { useRoomStore } from '@/stores/room'
@@ -496,6 +633,55 @@ const showRoundInput = ref(false)
 const showSettleConfirm = ref(false)
 const showShare = ref(false)
 const showOperators = ref(false)
+const showSettlementResult = ref(false)
+
+// 监听结算结果
+const settlementResultWatcher = computed(() => roomStore.settlementResult)
+
+// 计算当前用户的转账信息
+const getMyTransferInfo = computed(() => {
+  const result = roomStore.settlementResult
+  if (!result || result.isZeroMatch) return null
+  
+  const currentUser = roomStore.currentUser
+  if (!currentUser) return null
+  
+  // 检查是否需要付款
+  const payTransfer = result.transfers.find(t => t.from === currentUser)
+  if (payTransfer) {
+    return {
+      type: 'pay',
+      target: payTransfer.to,
+      amount: payTransfer.amount
+    }
+  }
+  
+  // 检查是否收款
+  const receiveAmount = result.transfers
+    .filter(t => t.to === currentUser)
+    .reduce((sum, t) => sum + t.amount, 0)
+  
+  if (receiveAmount > 0) {
+    return {
+      type: 'receive',
+      amount: receiveAmount
+    }
+  }
+  
+  return { type: 'draw' }
+})
+
+// 监听结算结果变化
+watch(settlementResultWatcher, (newVal) => {
+  if (newVal) {
+    showSettlementResult.value = true
+  }
+})
+
+function handleCloseSettlementResult() {
+  showSettlementResult.value = false
+  roomStore.clearSettlementResult()
+}
 
 const roundInput = ref({
   winner: '',
@@ -710,7 +896,7 @@ onUnmounted(() => {
   position: fixed;
   top: 20px;
   right: 20px;
-  z-index: 100;
+  z-index: 10000;
   background: var(--card-bg) !important;
   backdrop-filter: blur(10px);
 }
@@ -1208,6 +1394,220 @@ onUnmounted(() => {
   }
 }
 
+// 结算结果弹窗
+.settlement-result-panel {
+  .zero-match {
+    text-align: center;
+    padding: 40px 20px;
+    
+    .zero-icon {
+      font-size: 60px;
+      margin-bottom: 16px;
+    }
+    
+    .zero-text {
+      font-size: 18px;
+      color: var(--text-secondary);
+    }
+  }
+  
+  .victory-decoration {
+    text-align: center;
+    margin-bottom: 16px;
+    
+    .victory-img {
+      width: 120px;
+      height: auto;
+      opacity: 0.9;
+      border-radius: 12px;
+    }
+  }
+  
+  .final-score {
+    font-size: 20px;
+    margin-bottom: 20px;
+    text-align: center;
+    
+    strong {
+      color: var(--primary-color);
+      font-size: 28px;
+    }
+  }
+  
+  .balls-summary {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    
+    .ball-stat-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 20px;
+      
+      .player-avatar.mini {
+        width: 28px;
+        height: 28px;
+        font-size: 12px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        
+        &.player-1 { background: linear-gradient(135deg, #667eea, #764ba2); }
+        &.player-2 { background: linear-gradient(135deg, #f093fb, #f5576c); }
+        &.player-3 { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+        &.player-4 { background: linear-gradient(135deg, #fa709a, #fee140); }
+      }
+      
+      .name {
+        font-weight: 500;
+        color: var(--text-color);
+      }
+      
+      .balls {
+        font-weight: 700;
+        color: var(--primary-color);
+      }
+    }
+  }
+  
+  // 当前用户转账提示
+  .my-transfer-tip {
+    margin-bottom: 20px;
+    
+    .tip-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      border-radius: 16px;
+      text-align: center;
+      
+      &.pay {
+        background: linear-gradient(135deg, rgba(245, 87, 108, 0.15), rgba(245, 87, 108, 0.05));
+        border: 1px solid rgba(245, 87, 108, 0.3);
+      }
+      
+      &.receive {
+        background: linear-gradient(135deg, rgba(82, 196, 26, 0.15), rgba(82, 196, 26, 0.05));
+        border: 1px solid rgba(82, 196, 26, 0.3);
+      }
+      
+      &.draw {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-color);
+      }
+      
+      .tip-icon {
+        font-size: 40px;
+        margin-bottom: 12px;
+      }
+      
+      .tip-text {
+        font-size: 16px;
+        color: var(--text-color);
+        
+        strong {
+          color: var(--primary-color);
+        }
+        
+        .tip-amount {
+          font-size: 28px;
+          font-weight: 800;
+          color: var(--warning-color);
+          display: block;
+          margin-top: 8px;
+        }
+      }
+    }
+  }
+  
+  .transfers-section {
+    .section-title {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+      text-align: center;
+    }
+    
+    .transfer-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      
+      &.highlight {
+        background: rgba(102, 126, 234, 0.15);
+        border: 1px solid rgba(102, 126, 234, 0.3);
+      }
+      
+      .from {
+        color: var(--error-color);
+        font-weight: 600;
+        min-width: 50px;
+      }
+      
+      .transfer-arrow {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        flex: 1;
+        
+        .diff {
+          font-size: 11px;
+          color: var(--text-secondary);
+          margin-bottom: 2px;
+        }
+        
+        .t-icon {
+          color: var(--warning-color);
+          font-size: 20px;
+        }
+      }
+      
+      .to {
+        color: var(--success-color);
+        font-weight: 600;
+        min-width: 50px;
+        text-align: right;
+      }
+      
+      .amount {
+        font-size: 20px;
+        font-weight: 800;
+        color: var(--warning-color);
+        margin-left: 12px;
+        min-width: 70px;
+        text-align: right;
+      }
+    }
+  }
+  
+  .draw-result {
+    font-size: 18px;
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 20px;
+  }
+  
+  .result-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 24px;
+  }
+}
+
 // 分享内容
 .share-content {
   display: flex;
@@ -1323,6 +1723,146 @@ onUnmounted(() => {
     .player-score .score-big {
       font-size: 64px;
     }
+  }
+}
+
+// 全屏横屏比分面板
+.landscape-fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  background: var(--bg-color, #1a1a2e);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.fullscreen-score-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  
+  // 手机竖屏时，内容旋转90度模拟横屏
+  @media screen and (orientation: portrait) {
+    transform: rotate(90deg);
+    // 宽高互换
+    width: 100vh;
+    height: 100vw;
+  }
+  
+  // 手机横屏或PC端
+  @media screen and (orientation: landscape) {
+    width: 100%;
+    height: 100%;
+  }
+  
+  .fs-score-mode-switch {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    
+    .t-button {
+      font-size: 18px;
+      padding: 12px 32px;
+      min-width: 100px;
+    }
+  }
+  
+  .fs-score-display {
+    font-weight: 800;
+    letter-spacing: 20px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 30px;
+    font-size: 260px;
+    margin-bottom: 16px;
+    
+    // 手机竖屏旋转后，基于屏幕高度调整字号
+    @media screen and (orientation: portrait) {
+      font-size: min(38vh, 260px);
+      gap: 20px;
+      letter-spacing: 15px;
+    }
+    
+    // 手机横屏
+    @media screen and (orientation: landscape) and (max-height: 500px) {
+      font-size: min(48vh, 200px);
+      gap: 20px;
+    }
+    
+    // 对局比分颜色
+    &.rounds {
+      .fs-score-p1 {
+        color: #667eea;
+        text-shadow: 0 8px 40px rgba(102, 126, 234, 0.6);
+      }
+      .fs-score-p2 {
+        color: #f5576c;
+        text-shadow: 0 8px 40px rgba(245, 87, 108, 0.6);
+      }
+      .fs-score-divider {
+        color: var(--text-color, #fff);
+      }
+    }
+    
+    // 球数比颜色
+    &.balls {
+      .fs-score-p1 {
+        color: #52c41a;
+        text-shadow: 0 8px 40px rgba(82, 196, 26, 0.6);
+      }
+      .fs-score-p2 {
+        color: #faad14;
+        text-shadow: 0 8px 40px rgba(250, 173, 20, 0.6);
+      }
+      .fs-score-divider {
+        color: var(--text-color, #fff);
+      }
+    }
+  }
+  
+  .fs-round-info {
+    font-size: 28px;
+    color: var(--text-color, #fff);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    
+    @media screen and (orientation: portrait) {
+      font-size: 22px;
+    }
+    
+    .fs-sub-score {
+      font-size: 22px;
+      color: var(--text-secondary, #888);
+      font-weight: 400;
+      
+      @media screen and (orientation: portrait) {
+        font-size: 20px;
+      }
+    }
+  }
+}
+
+// 退出按钮在全屏横屏模式下的位置
+.landscape-fullscreen .exit-fullscreen-btn {
+  // 竖屏设备上，按钮也需要旋转
+  @media screen and (orientation: portrait) {
+    top: 20px;
+    right: auto;
+    left: 20px;
+    transform: rotate(90deg);
   }
 }
 

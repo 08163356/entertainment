@@ -79,6 +79,11 @@ export const basketballRoomApi = {
     return api.delete(`/rooms/${roomId}/operators/${userName}`).then(res => res.data)
   },
 
+  // 设置玩家仅能编辑自己
+  setSelfEditOnly(roomId: string, userName: string): Promise<void> {
+    return api.post(`/rooms/${roomId}/self-edit-only/${userName}`).then(res => res.data)
+  },
+
   // 转移房主
   transferOwner(roomId: string, userName: string): Promise<void> {
     return api.post(`/rooms/${roomId}/transfer-owner`, { userName }).then(res => res.data)

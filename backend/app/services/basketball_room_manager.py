@@ -25,6 +25,7 @@ class BasketballRoomManager:
             "owner": owner,
             "players": [{"name": p.name, "isPreset": p.isPreset} for p in players],
             "operators": [owner] + [p.name for p in players],  # 所有参赛者默认有权限
+            "selfEditOnly": [],  # 只能编辑自己的玩家列表
             "spectators": [],
             "rounds": [],
             "ballsPerRound": balls_per_round,
@@ -171,6 +172,20 @@ class BasketballRoomManager:
             # 不能移除房主权限
             if user_name != room["owner"]:
                 room["operators"].remove(user_name)
+    
+    def add_self_edit_only(self, room_id: str, user_name: str):
+        """添加玩家到仅编辑自己列表"""
+        room = self.rooms.get(room_id)
+        if room and user_name not in room["selfEditOnly"]:
+            # 不能对房主设置
+            if user_name != room["owner"]:
+                room["selfEditOnly"].append(user_name)
+    
+    def remove_self_edit_only(self, room_id: str, user_name: str):
+        """从仅编辑自己列表移除"""
+        room = self.rooms.get(room_id)
+        if room and user_name in room["selfEditOnly"]:
+            room["selfEditOnly"].remove(user_name)
     
     def transfer_owner(self, room_id: str, new_owner: str) -> bool:
         room = self.rooms.get(room_id)

@@ -1,4 +1,5 @@
 import { useRoomStore } from '@/stores/room'
+import { NotifyPlugin } from 'tdesign-vue-next'
 import type { Room, RoundRecord } from '@/types/billiards'
 
 type MessageHandler = (data: any) => void
@@ -69,11 +70,30 @@ class WebSocketService {
         roomStore.updateOwner(message.data.owner, message.data.operators)
         break
       case 'room_settled':
-        roomStore.setRoom(message.data as Room)
+        // 更新房间状态
+        if (message.data.room) {
+          roomStore.setRoom(message.data.room as Room)
+        }
+        // 存储结算详情供页面显示
+        roomStore.setSettlementResult(message.data)
         break
       case 'user_joined':
+        // 用户加入，更新房间信息并通知
+        if (message.data.room) {
+          roomStore.setRoom(message.data.room)
+        }
+        // 顶部通知（排除自己）
+        if (message.data.userName && message.data.userName !== this.userName) {
+          NotifyPlugin.info({
+            title: '有人进入房间',
+            content: `${message.data.userName} 加入了房间`,
+            duration: 3000,
+            placement: 'top-right'
+          })
+        }
+        break
       case 'user_left':
-        // 用户加入/离开，更新房间信息
+        // 用户离开，更新房间信息
         if (message.data.room) {
           roomStore.setRoom(message.data.room)
         }

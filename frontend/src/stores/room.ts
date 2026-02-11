@@ -3,10 +3,35 @@ import { ref, computed } from 'vue'
 import type { Room, RoundRecord, Player } from '@/types/billiards'
 import { wsService } from '@/services/websocket'
 
+// 结算结果类型
+export interface SettlementResultData {
+  room: Room
+  settlement: {
+    score: string
+    winner: string | null
+    loser: string | null
+    ballDiff: number
+    amount: number
+  }
+  transfers: Array<{
+    from: string
+    to: string
+    amount: number
+    ballDiff: number
+  }>
+  playerStats: Array<{
+    name: string
+    wins: number
+    balls: number
+  }>
+  isZeroMatch: boolean
+}
+
 export const useRoomStore = defineStore('room', () => {
   const room = ref<Room | null>(null)
   const currentUser = ref<string>('')
   const connected = ref(false)
+  const settlementResult = ref<SettlementResultData | null>(null)
 
   const isOwner = computed(() => room.value?.owner === currentUser.value)
   
@@ -89,15 +114,25 @@ export const useRoomStore = defineStore('room', () => {
     connected.value = status
   }
 
+  function setSettlementResult(result: SettlementResultData | null) {
+    settlementResult.value = result
+  }
+
+  function clearSettlementResult() {
+    settlementResult.value = null
+  }
+
   function reset() {
     room.value = null
     connected.value = false
+    settlementResult.value = null
   }
 
   return {
     room,
     currentUser,
     connected,
+    settlementResult,
     isOwner,
     canOperate,
     players,
@@ -110,6 +145,8 @@ export const useRoomStore = defineStore('room', () => {
     updateOperators,
     updateOwner,
     setConnected,
+    setSettlementResult,
+    clearSettlementResult,
     reset
   }
 })

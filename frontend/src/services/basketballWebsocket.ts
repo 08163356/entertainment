@@ -83,7 +83,7 @@ class BasketballWebSocketService {
         break
         
       case 'operators_updated':
-        store.updateOperators(message.data.operators)
+        store.updateOperators(message.data.operators, message.data.selfEditOnly)
         break
         
       case 'owner_transferred':

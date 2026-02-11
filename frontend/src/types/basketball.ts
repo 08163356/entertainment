@@ -22,6 +22,7 @@ export interface Room {
   owner: string
   players: Player[]
   operators: string[]
+  selfEditOnly: string[]  // 只能编辑自己的玩家列表
   spectators: string[]
   rounds: RoundRecord[]
   ballsPerRound: number

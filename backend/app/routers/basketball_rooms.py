@@ -357,10 +357,15 @@ async def grant_operator(room_id: str, data: OperatorGrant):
         raise HTTPException(status_code=404, detail="房间不存在")
     
     basketball_room_manager.add_operator(room_id, data.userName)
+    # 如果授权完整权限，从selfEditOnly中移除
+    basketball_room_manager.remove_self_edit_only(room_id, data.userName)
     
     await basketball_room_manager.broadcast(room_id, {
         "type": "operators_updated",
-        "data": {"operators": basketball_room_manager.get_room(room_id)["operators"]}
+        "data": {
+            "operators": basketball_room_manager.get_room(room_id)["operators"],
+            "selfEditOnly": basketball_room_manager.get_room(room_id)["selfEditOnly"]
+        }
     })
     
     return {"success": True}
@@ -374,10 +379,37 @@ async def revoke_operator(room_id: str, user_name: str):
         raise HTTPException(status_code=404, detail="房间不存在")
     
     basketball_room_manager.remove_operator(room_id, user_name)
+    # 撤销权限也从selfEditOnly中移除
+    basketball_room_manager.remove_self_edit_only(room_id, user_name)
     
     await basketball_room_manager.broadcast(room_id, {
         "type": "operators_updated",
-        "data": {"operators": basketball_room_manager.get_room(room_id)["operators"]}
+        "data": {
+            "operators": basketball_room_manager.get_room(room_id)["operators"],
+            "selfEditOnly": basketball_room_manager.get_room(room_id)["selfEditOnly"]
+        }
+    })
+    
+    return {"success": True}
+
+
+@router.post("/{room_id}/self-edit-only/{user_name}")
+async def set_self_edit_only(room_id: str, user_name: str):
+    """设置玩家仅能编辑自己"""
+    room = basketball_room_manager.get_room(room_id)
+    if not room:
+        raise HTTPException(status_code=404, detail="房间不存在")
+    
+    # 添加到selfEditOnly列表，并从operators中移除
+    basketball_room_manager.add_self_edit_only(room_id, user_name)
+    basketball_room_manager.remove_operator(room_id, user_name)
+    
+    await basketball_room_manager.broadcast(room_id, {
+        "type": "operators_updated",
+        "data": {
+            "operators": basketball_room_manager.get_room(room_id)["operators"],
+            "selfEditOnly": basketball_room_manager.get_room(room_id)["selfEditOnly"]
+        }
     })
     
     return {"success": True}
