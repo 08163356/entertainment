@@ -51,7 +51,7 @@
               </div>
             </div>
             
-            <div class="match-settlement" v-if="match.settlement && match.settlement.transfers.length > 0">
+            <div class="match-settlement" v-if="match.settlement && match.settlement.transfers && match.settlement.transfers.length > 0">
               <div class="settlement-title">转账明细</div>
               <div 
                 v-for="(transfer, idx) in match.settlement.transfers" 
@@ -65,7 +65,7 @@
                 <span class="to">{{ transfer.toPlayer }}</span>
               </div>
             </div>
-            <div class="match-settlement draw" v-else-if="match.settlement">
+            <div class="match-settlement draw" v-else-if="match.settlement && isTrueDraw(match)">
               <span>平局</span>
             </div>
           </div>
@@ -147,6 +147,15 @@ function getPlayerStats(match: MatchRecord) {
   }))
   
   return result.sort((a, b) => b.made - a.made)
+}
+
+// 判断是否真的是平局（所有玩家进球数相同）
+function isTrueDraw(match: MatchRecord): boolean {
+  const stats = getPlayerStats(match)
+  if (stats.length <= 1) return true
+  
+  const firstMade = stats[0].made
+  return stats.every(s => s.made === firstMade)
 }
 
 onMounted(() => {

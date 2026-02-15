@@ -27,18 +27,7 @@ def build_match_response(match: BasketballMatch, rounds: list) -> MatchResponse:
         ))
     
     settlement = None
-    if match.status == "settled" and match.settlement_winner:
-        # 重建 settlement
-        transfers = []
-        if match.settlement_details:
-            for t in match.settlement_details:
-                transfers.append(TransferDetail(
-                    fromPlayer=t.get("fromPlayer", ""),
-                    toPlayer=t.get("toPlayer", ""),
-                    amount=t.get("amount", 0),
-                    shotsDiff=t.get("shotsDiff", 0)
-                ))
-        
+    if match.status == "settled":
         # 计算每个玩家统计
         player_stats = {}
         for p in match.players:
@@ -60,11 +49,46 @@ def build_match_response(match: BasketballMatch, rounds: list) -> MatchResponse:
                 accuracy=round(accuracy, 1)
             ))
         
+        sorted_stats = sorted(stats_list, key=lambda x: x.totalMade, reverse=True)
+        
+        # 优先从数据库读取 transfers
+        transfers = []
+        if match.settlement_details:
+            for t in match.settlement_details:
+                transfers.append(TransferDetail(
+                    fromPlayer=t.get("fromPlayer", ""),
+                    toPlayer=t.get("toPlayer", ""),
+                    amount=t.get("amount", 0),
+                    shotsDiff=t.get("shotsDiff", 0)
+                ))
+        
+        # 如果数据库中没有 transfers，但有不同进球数的玩家，则重新计算
+        if not transfers and len(sorted_stats) > 1 and match.price_per_ball > 0:
+            winner = sorted_stats[0]
+            if winner.totalMade > 0:
+                for stat in sorted_stats[1:]:
+                    shots_diff = winner.totalMade - stat.totalMade
+                    amount = shots_diff * match.price_per_ball
+                    if shots_diff > 0:
+                        transfers.append(TransferDetail(
+                            fromPlayer=stat.name,
+                            toPlayer=winner.name,
+                            amount=amount,
+                            shotsDiff=shots_diff
+                        ))
+        
+        # 确定 winner：进球最多的玩家（如果有 transfers 说明有差距）
+        winner_name = match.settlement_winner
+        if not winner_name and transfers:
+            winner_name = sorted_stats[0].name
+        
+        total_amount = match.settlement_total_amount or sum(t.amount for t in transfers)
+        
         settlement = SettlementResponse(
-            winner=match.settlement_winner,
-            playerStats=sorted(stats_list, key=lambda x: x.totalMade, reverse=True),
+            winner=winner_name,
+            playerStats=sorted_stats,
             transfers=transfers,
-            totalAmount=match.settlement_total_amount or 0
+            totalAmount=total_amount
         )
     
     return MatchResponse(
